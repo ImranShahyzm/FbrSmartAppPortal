@@ -1,0 +1,3212 @@
+using ClosedXML.Excel;
+using DatabaseServices;
+using ExcelDataReader;
+using ExcelDataReader.Exceptions;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SqlClient;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Net.NetworkInformation;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using WeightBridgeManagmentSystem.FBRModels;
+using WeightBridgeManagmentSystem.Login;
+using WeightBridgeManagmentSystem.Registration;
+using WeightBridgeManagmentSystem.Reports;
+using WeightBridgeManagmentSystem.Sync;
+using WeightBridgeManagmentSystem.Utilities;
+using WeightBridgeManagmentSystem.Weight;
+using static WeightBridgeManagmentSystem.FBRModels.FbrLibraryClasses;
+
+namespace WeightBridgeManagmentSystem.Main
+{
+    public partial class frmMain :Form
+    {
+        public static bool isMain = true;
+        public static string whichReport;
+        public frmMain()
+        {
+    //        var timer = new System.Threading.Timer(
+    //e => hello(),
+    //null,
+    //TimeSpan.Zero,
+    //TimeSpan.FromSeconds(10));
+            InitializeComponent();
+            lblProgress.Visible = false;
+            progressBar1.Visible = false;
+
+
+
+
+            if (LoginInfo.EnableSandBox)
+            {
+                lblEnviornment.Text = "Production Environment is Enabled...";
+                lblEnviornment.ForeColor = Color.Red;
+            }
+            else
+            {
+                lblEnviornment.Text = "Sandbox Environment is Enabled...";
+                lblEnviornment.ForeColor = Color.Green;
+            }
+
+
+            menuStrip1.Renderer = new myRenderer();
+
+          
+        }
+        //private static void hello()
+        //{
+        //    //bool connection = NetworkInterface.GetIsNetworkAvailable();
+        //    //if (connection == true)
+        //    //{
+
+        //        MessageBox.Show("YES");
+
+        //        //string connectionString = "Data Source=.;Initial Catalog=WBMS;Integrated Security=True";
+
+        //        //SqlConnection con = new SqlConnection(connectionString);
+        //        //con.Open();
+        //        //SqlTransaction tran = con.BeginTransaction();
+        //        //try
+        //        //{
+
+
+        //        //    SqlCommand cmd = con.CreateCommand();
+        //        //    cmd.CommandText = "SPSW_Save";
+        //        //    cmd.CommandType = CommandType.StoredProcedure;
+        //        //    cmd.Transaction = tran;
+        //        //    cmd.ExecuteNonQuery();
+        //        //    tran.Commit();
+        //        //    con.Close();
+        //        //}
+        //        //catch (Exception ex)
+        //        //{
+        //        //    tran.Rollback();
+
+        //        //}
+
+        //    //}
+        //    //else {
+        //    //    MessageBox.Show("NO");
+        //    //}
+        //}
+        private void btnUpdateWeight_Click(object sender, EventArgs e)
+        {
+            //frmWeight.WeightNo = "UpdateWeight";
+            //frmWeightPage frmweightpage = new frmWeightPage();
+            //frmweightpage.Show();
+        }
+        private void btnWeight_Click(object sender, EventArgs e)
+        {
+            //frmWeight frmweight = new frmWeight();
+            //frmweight.Show();
+        }
+
+        private void frmMain_Load(object sender, EventArgs e)
+        {
+            List<string> users = new List<string>();
+            users = LoginInfo.Rights;
+          
+            if (!users.Contains("Reports"))
+            {
+                reportsToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("Registration"))
+            {
+                registerationToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("Utilities"))
+            {
+                utilitiesToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("Weight"))
+            {
+                weightToolStripMenuItem1.Visible = false;
+            }
+            if (!users.Contains("DailyWeight"))
+            {
+                dailyWeightToolStripMenuItem.Visible = false;
+            }
+            
+            if (!users.Contains("VehicleWiseWeight"))
+            {
+                vehicleWiseToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("SinglePart"))
+            {
+                singlePartyToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("AllParties"))
+            {
+                allPartiesToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("SingleProduct"))
+            {
+                singleProductToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("AllProducts"))
+            {
+                allProductsToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("PartyList"))
+            {
+                partyListToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("ProductList"))
+            {
+                productListToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("RegisterParty"))
+            {
+                partyToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("RegisterProduct"))
+            {
+                productToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("RegisterBardanaType"))
+            {
+                bardanaTypeToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("CompanyInfo"))
+            {
+                companyToolStripMenuItem.Visible = false;
+            }
+            if (!users.Contains("RegisterUsers"))
+            {
+                registerUserToolStripMenuItem.Visible = false;
+            }           
+        
+            
+           
+        }
+
+        private void quitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            Application.ExitThread();
+            Process.GetCurrentProcess().CloseMainWindow();
+            Environment.Exit(0);
+            //Application.Exit();
+        }
+
+        private void takeWeightToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            takeweight frm = new takeweight();
+            frm.Show();
+        }
+
+        private void menuStrip1_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        {
+           
+        }
+
+        private void updateWeightToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (LoginInfo.WeighbridgeStyle == "takeweightFeedStyle")
+            {
+                takeweightFeedStyle.WeightNo = "UpdateWeight";
+                frmSaveWeightFeed frm = new frmSaveWeightFeed("");
+                frm.ShowDialog();
+               
+            }
+            else if (LoginInfo.WeighbridgeStyle == "takeweightSolvantStyle")
+            {
+                takeweightSolvantStyle.WeightNo = "UpdateWeight";
+                frmSaveWeightSolvant frm = new frmSaveWeightSolvant();
+                frm.ShowDialog();
+
+            }
+            else
+            {
+                takeWeightNewStyle.WeightNo = "UpdateWeight";
+
+                frmSaveWeight frm = new frmSaveWeight();
+                frm.ShowDialog();
+            }
+        }
+
+        private void partyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmPartyInfo frm = new frmPartyInfo();
+            frm.ShowDialog();
+            
+        }
+
+        private void productToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmProduct frm = new frmProduct();
+            frm.ShowDialog();
+            
+        }
+
+        private void bardanaTypeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmBardanaType frm = new frmBardanaType();
+            frm.ShowDialog();
+        }
+
+        private void kantaToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmKantaCoding frm = new frmKantaCoding();
+            frm.ShowDialog();
+        }
+
+        private void companyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmCompanyInfo frm = new frmCompanyInfo();
+            frm.ShowDialog();
+        }
+
+        private void registerUserToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            frmRegisterUser frm = new frmRegisterUser();
+            frm.ShowDialog();
+        }
+
+        private void weightToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            whichReport = "Weight";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void dailyWeightToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            whichReport = "DailyWeight";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void gateWiseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void vehicleWiseToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            whichReport = "Vehiclewise";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void singlePartyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            whichReport = "SingleParty";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void allPartiesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            whichReport = "AllParties";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void singleProductToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            whichReport = "SingleProduct";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void allProductsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            whichReport = "AllProducts";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void partyListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                frmrptWeight frmRpt = new frmrptWeight();
+                frmRpt.PartyListReport();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void productListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                frmrptWeight frmRpt = new frmrptWeight();
+                frmRpt.ProductListReport();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            } 
+        }
+
+
+      
+       
+        private class myRenderer : ToolStripProfessionalRenderer
+        {
+            protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs myMenu)
+            {
+                if (!myMenu.Item.Selected)
+                    base.OnRenderMenuItemBackground(myMenu);
+                else
+                {
+                    Rectangle menuRectangle = new Rectangle(Point.Empty, myMenu.Item.Size);
+                    //Fill Color
+                    myMenu.Graphics.FillRectangle(Brushes.SkyBlue, menuRectangle);
+                    // Border Color
+                    myMenu.Graphics.DrawRectangle(Pens.SkyBlue, 1, 0, menuRectangle.Width - 2, menuRectangle.Height - 1);
+                    
+                    
+                }
+            }
+
+            protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+            {
+                base.OnRenderItemText(e);
+                if (!e.Item.Selected)
+                {
+                    e.Item.ForeColor = Color.White;
+                }
+                else
+                {
+                    e.Item.ForeColor = Color.DeepPink;
+                }
+            }
+        }
+
+        private void toolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            whichReport = "Group Wise";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void toolStripMenuItem2_Click(object sender, EventArgs e)
+        {
+            whichReport = "Oil Tanker";
+            frmrptSelection frmrptselection = new frmrptSelection();
+            frmrptselection.ShowDialog();
+        }
+
+        private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+
+            Application.ExitThread();
+            Process.GetCurrentProcess().CloseMainWindow();
+            Environment.Exit(0);
+            //Application.Exit();
+        }
+
+        private void emailConfigToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmEmailConfig frm = new frmEmailConfig();
+            frm.ShowDialog();
+        }
+
+        private void syncDataToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmDataSync frm = new frmDataSync();
+            frm.ShowDialog();
+        }
+
+        private void takeWeightToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            if (LoginInfo.WeighbridgeStyle == "takeweightFeedStyle")
+            {
+                takeweightFeedStyle frm = new takeweightFeedStyle();
+                frm.ShowDialog();
+            }
+            else if (LoginInfo.WeighbridgeStyle == "takeweightSolvantStyle")
+            {
+                takeweightSolvantStyle frm = new takeweightSolvantStyle();
+                frm.ShowDialog();
+            }
+            else if (LoginInfo.WeighbridgeStyle == "takeweight")
+            {
+                takeweightFeedStyle frm = new takeweightFeedStyle();
+                frm.ShowDialog();
+            }
+            
+            else
+            {
+                takeWeightNewStyle frm = new takeWeightNewStyle();
+                frm.ShowDialog();
+            }
+            
+        }
+
+        private void generalSettingsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            frmCounterConfiguration frm=new frmCounterConfiguration();
+            frm.ShowDialog();
+        }
+
+        private void outwardWeightToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (LoginInfo.WeighbridgeStyle == "takeweightFeedStyle")
+            {
+                takeweightFeedStyle frm = new takeweightFeedStyle();
+                frm.ShowDialog();
+            }
+            else if (LoginInfo.WeighbridgeStyle == "takeweightSolvantStyle")
+            {
+                takeweightSolvantStyle frm = new takeweightSolvantStyle(1);
+                frm.ShowDialog();
+            }
+            else if (LoginInfo.WeighbridgeStyle == "takeweight")
+            {
+                takeweightFeedStyle frm = new takeweightFeedStyle();
+                frm.ShowDialog();
+            }
+
+            else
+            {
+                takeWeightNewStyle frm = new takeWeightNewStyle();
+                frm.ShowDialog();
+            }
+        }
+
+
+
+        private void btnUploadExcel_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (OpenFileDialog openFileDialog = new OpenFileDialog())
+                {
+                    openFileDialog.Filter = "Excel Files|*.xls;*.xlsx";
+                    if (openFileDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        using (var stream = File.Open(openFileDialog.FileName, FileMode.Open, FileAccess.Read))
+                        {
+                            using (var reader = ExcelReaderFactory.CreateReader(stream))
+                            {
+                                var result = reader.AsDataSet(new ExcelDataSetConfiguration()
+                                {
+                                    ConfigureDataTable = (_) => new ExcelDataTableConfiguration()
+                                    {
+                                        UseHeaderRow = true
+                                    }
+                                });
+
+                                if (result.Tables.Count == 0)
+                                {
+                                    MessageBox.Show("The selected Excel file does not contain any sheets.", "Empty File", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    return;
+                                }
+
+                                DataTable table = result.Tables[0];
+
+                                if (table.Rows.Count == 0)
+                                {
+                                    MessageBox.Show("The selected Excel sheet is empty.", "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    return;
+                                }
+
+                                // Bind to grid
+                                FrbInvGrid.DataSource = table;
+
+                                // ✅ Add "Valid" checkbox column if not already added
+                                if (!FrbInvGrid.Columns.Contains("Valid"))
+                                {
+                                    DataGridViewCheckBoxColumn validCol = new DataGridViewCheckBoxColumn
+                                    {
+                                        Name = "Valid",
+                                        HeaderText = "Valid",
+                                        ReadOnly = true
+                                    };
+                                    FrbInvGrid.Columns.Add(validCol);
+                                }
+
+                                MessageBox.Show("Excel data loaded successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show("File access error: " + ioEx.Message, "IO Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (HeaderException hex)
+            {
+                MessageBox.Show("Excel format error: " + hex.Message, "Format Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An unexpected error occurred:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void btnValidate_Click(object sender, EventArgs e)
+        {
+            if (!FrbInvGrid.Columns.Contains("FBRInvoiceNumber"))
+            {
+                FrbInvGrid.Columns.Add("FBRInvoiceNumber", "FBR Invoice Number");
+            }
+
+            for (int i = 0; i < FrbInvGrid.Rows.Count; i++)
+            {
+                var row = FrbInvGrid.Rows[i];
+                if (row.IsNewRow) continue;
+
+                bool isValid = true;
+                string errorMessage = "";
+
+                var sellerNTN = Convert.ToString(row.Cells["sellerNTNCNIC"].Value);
+                var sellerAddress = Convert.ToString(row.Cells["sellerAddress"].Value);
+                var buyerNTN = Convert.ToString(row.Cells["buyerNTNCNIC"].Value);
+                var buyerAddress = Convert.ToString(row.Cells["buyerAddress"].Value);
+                var hsCode = Convert.ToString(row.Cells["hsCode"].Value);
+                var totalValues = Convert.ToString(row.Cells["totalValues"].Value);
+
+                if (string.IsNullOrWhiteSpace(sellerNTN)) { isValid = false; errorMessage += "Seller NTN is required.\n"; }
+                if (string.IsNullOrWhiteSpace(sellerAddress)) { isValid = false; errorMessage += "Seller Address is required.\n"; }
+                if (string.IsNullOrWhiteSpace(buyerNTN)) { isValid = false; errorMessage += "Buyer NTN is required.\n"; }
+                if (string.IsNullOrWhiteSpace(buyerAddress)) { isValid = false; errorMessage += "Buyer Address is required.\n"; }
+                if (string.IsNullOrWhiteSpace(hsCode)) { isValid = false; errorMessage += "HS Code is required.\n"; }
+                if (!decimal.TryParse(totalValues, out _)) { isValid = false; errorMessage += "Total value must be numeric.\n"; }
+
+                if (!isValid)
+                {
+                    row.DefaultCellStyle.BackColor = Color.Red;
+                    row.Cells["Valid"].Value = false;
+                    MessageBox.Show($"Validation failed for Row {i + 1}:\n\n{errorMessage}", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    FrbInvGrid.CurrentCell = row.Cells[0];
+                    return;
+                }
+
+                row.DefaultCellStyle.BackColor = Color.White;
+                row.Cells["Valid"].Value = true;
+
+                // ✅ Prepare temp DataGridView with this single row
+                var tempGrid = new DataGridView();
+                foreach (DataGridViewColumn col in FrbInvGrid.Columns)
+                {
+                    tempGrid.Columns.Add((DataGridViewColumn)col.Clone());
+                }
+
+                var tempRowIndex = tempGrid.Rows.Add();
+                for (int colIndex = 0; colIndex < FrbInvGrid.Columns.Count; colIndex++)
+                {
+                    tempGrid.Rows[tempRowIndex].Cells[colIndex].Value = row.Cells[colIndex].Value;
+                }
+
+                // 🧠 Call the same method but only on this tempGrid
+                var singleRowModels = FbrLibraryClasses.ConvertGridToFbrInvoices(tempGrid);
+                if (singleRowModels == null || singleRowModels.Count == 0)
+                {
+                    row.DefaultCellStyle.BackColor = Color.OrangeRed;
+                    MessageBox.Show($"Failed to convert Row {i + 1} to FBR model.", "Conversion Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                var invoiceModel = singleRowModels[0];
+                var api = new Fbr_DigitalInvoicing();
+                ApiResponse response = null;
+
+                await Task.Run(() =>
+                {
+                    bool isRunningInVisualStudio =  Debugger.IsAttached;
+                    if (LoginInfo.EnableSandBox && !isRunningInVisualStudio)
+                    {
+                        response = api.SendModelToApi(invoiceModel, LoginInfo.FbrTokenProduction, true,true);
+                    }
+                    else
+                    {
+                        response = api.SendModelToApi(invoiceModel, LoginInfo.FbrTokenSandBox,true);
+                    }
+
+                    
+                });
+
+                if (response == null || response.validationResponse == null)
+                {
+                    row.DefaultCellStyle.BackColor = Color.OrangeRed;
+                    MessageBox.Show($"Row {i + 1} failed: Null response from FBR.", "API Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                var vr = response.validationResponse;
+
+                if (vr.statusCode != "00")
+                {
+                    row.DefaultCellStyle.BackColor = Color.OrangeRed;
+
+                    if (string.IsNullOrEmpty(vr.error))
+                    {
+                        if (vr.invoiceStatuses.Count > 0)
+                        {
+                            MessageBox.Show($"Row {i + 1} FBR Error: {vr.invoiceStatuses[0].error}", "API Rejection", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Row {i + 1} FBR Error: {vr.error}", "API Rejection", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    return;
+                }
+
+                // ✅ Success
+                row.DefaultCellStyle.BackColor = Color.LightGreen;
+                row.Cells["FBRInvoiceNumber"].Value = response.invoiceNumber ?? "";
+            }
+
+            MessageBox.Show("All rows validated and submitted successfully.", "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private DataTable GetGridDataWithFBRNumber()
+        {
+            DataTable dt = new DataTable();
+
+            // Create columns dynamically from grid
+            foreach (DataGridViewColumn col in FrbInvGrid.Columns)
+            {
+                dt.Columns.Add(col.Name, typeof(string)); // or typeof(object) if mixed types
+            }
+
+            // Fill rows
+            foreach (DataGridViewRow gridRow in FrbInvGrid.Rows)
+            {
+                if (!gridRow.IsNewRow)
+                {
+                    DataRow row = dt.NewRow();
+
+                    foreach (DataGridViewCell cell in gridRow.Cells)
+                    {
+                        row[cell.OwningColumn.Name] = cell.Value ?? DBNull.Value;
+                    }
+
+                    dt.Rows.Add(row);
+                }
+            }
+
+            return dt;
+        }
+
+
+
+
+        private async void btnSubmitOld_Click(object sender, EventArgs e)
+        {
+            btnSubmit.Enabled = false;
+            progressBar1.Visible = true;
+            lblProgress.Visible = true;
+            progressBar1.Value = 0;
+
+            try
+            {
+                var result = FbrLibraryClasses.ConvertGridToFbrInvoices(this.FrbInvGrid);
+                int total = result.Count;
+
+                if (total == 0)
+                {
+                    MessageBox.Show("No invoices found to submit.");
+                    return;
+                }
+
+                if (!FrbInvGrid.Columns.Contains("FBRInvoiceNumber"))
+                {
+                    FrbInvGrid.Columns.Add("FBRInvoiceNumber", "FBR Invoice Number");
+                }
+                progressBar1.Maximum = total;
+
+                await Task.Run(() =>
+                {
+                    var obj = new Fbr_DigitalInvoicing();
+                    int current = 0;
+
+                    for (int i = 0; i < result.Count; i++)
+                    {
+                        var data = result[i];
+                        ApiResponse response = null;
+
+                        try
+                        {
+                            response = obj.SendModelToApi(data, "f6f6a509-2839-3cf1-ad92-fb0f7ab6d06a");
+
+                            Invoke(new Action(() =>
+                            {
+                                var row = FrbInvGrid.Rows[i];
+
+                                if (response != null && response.validationResponse?.statusCode == "00")
+                                {
+                                    // If column doesn't exist, create it (once)
+                                    if (!FrbInvGrid.Columns.Contains("FbrInvoiceNumber"))
+                                    {
+                                        FrbInvGrid.Columns.Add("FbrInvoiceNumber", "FBR Invoice #");
+                                    }
+
+                                    row.Cells["FbrInvoiceNumber"].Value = response.invoiceNumber ?? "";
+                                    row.DefaultCellStyle.BackColor = Color.LightGreen;
+                                }
+                                else
+                                {
+                                    row.DefaultCellStyle.BackColor = Color.OrangeRed;
+                                    string err = response?.validationResponse?.error ?? "Unknown error";
+                                    MessageBox.Show($"Invoice  failed:\n{err}", "API Submission Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                }
+
+                                progressBar1.Value = ++current;
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            Invoke(new Action(() =>
+                            {
+                                MessageBox.Show($"Error in invoice :\n{ex.Message}");
+                                progressBar1.Value = ++current;
+                            }));
+                        }
+                    }
+                });
+
+                MessageBox.Show("All invoices submitted successfully.");
+
+                // Show export button at the end
+                btnExportExcel.Visible = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}", "Submission Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                progressBar1.Visible = false;
+                lblProgress.Visible = false;
+                btnSubmit.Enabled = true;
+            }
+        }
+        private bool CheckBeforeSubmission()
+        {
+            if (FrbInvGrid.DataSource == null)
+            {
+                MessageBox.Show("No data to save. Please upload an Excel file first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return true;
+            }
+
+            DataTable dt = GetGridDataWithFBRNumber();
+            if (dt != null && !dt.Columns.Contains("FBRInvoiceNumber"))
+            {
+                dt.Columns.Add("FBRInvoiceNumber", typeof(string));
+            }
+            // ✅ Map Excel DataTable to SQL Table-Valued Parameter
+            DataTable tvp = new DataTable();
+            tvp.Columns.Add("UniqueInvoiceID", typeof(int));
+            tvp.Columns.Add("InvoiceType", typeof(string));
+            tvp.Columns.Add("InvoiceDate", typeof(DateTime));
+            tvp.Columns.Add("SellerBusinessName", typeof(string));
+            tvp.Columns.Add("SellerProvince", typeof(string));
+            tvp.Columns.Add("SellerAddress", typeof(string));
+            tvp.Columns.Add("SellerNTNCNIC", typeof(string));
+            tvp.Columns.Add("BuyerNTNCNIC", typeof(string));
+            tvp.Columns.Add("BuyerBusinessName", typeof(string));
+            tvp.Columns.Add("BuyerProvince", typeof(string));
+            tvp.Columns.Add("BuyerAddress", typeof(string));
+            tvp.Columns.Add("InvoiceRefNo", typeof(string));
+            tvp.Columns.Add("BuyerRegistrationType", typeof(string));
+            tvp.Columns.Add("ScenarioId", typeof(string));
+            tvp.Columns.Add("HsCode", typeof(string));
+            tvp.Columns.Add("ProductDescription", typeof(string));
+            tvp.Columns.Add("Rate", typeof(string));
+            tvp.Columns.Add("UoM", typeof(string));
+            tvp.Columns.Add("Quantity", typeof(decimal));
+            tvp.Columns.Add("TotalValues", typeof(decimal));
+            tvp.Columns.Add("ValueSalesExcludingST", typeof(decimal));
+            tvp.Columns.Add("SalesTaxApplicable", typeof(decimal));
+            tvp.Columns.Add("FixedNotifiedValueOrRetailPrice", typeof(decimal));
+            tvp.Columns.Add("SalesTaxWithheldAtSource", typeof(decimal));
+            tvp.Columns.Add("ExtraTax", typeof(decimal));
+            tvp.Columns.Add("FurtherTax", typeof(decimal));
+            tvp.Columns.Add("SroScheduleNo", typeof(string));
+            tvp.Columns.Add("FedPayable", typeof(decimal));
+            tvp.Columns.Add("Discount", typeof(decimal));
+            tvp.Columns.Add("SaleType", typeof(string));
+            tvp.Columns.Add("SroItemSerialNo", typeof(string));
+            tvp.Columns.Add("FbrInvoiceNumber", typeof(string));
+
+            // ✅ Populate TVP from grid
+            int rowIndex = 0;
+            foreach (DataRow row in dt.Rows)
+            {
+                tvp.Rows.Add(
+                    SafeInt(row["UniqueInvoiceID"], "UniqueInvoiceID", rowIndex),
+                    row["InvoiceType"]?.ToString(),
+                    SafeDate(row["InvoiceDate"], "InvoiceDate", rowIndex),
+                    row["SellerBusinessName"]?.ToString(),
+                    row["SellerProvince"]?.ToString(),
+                    row["SellerAddress"]?.ToString(),
+                    row["SellerNTNCNIC"]?.ToString(),
+                    row["BuyerNTNCNIC"]?.ToString(),
+                    row["BuyerBusinessName"]?.ToString(),
+                    row["BuyerProvince"]?.ToString(),
+                    row["BuyerAddress"]?.ToString(),
+                    row["InvoiceRefNo"]?.ToString(),
+                    row["BuyerRegistrationType"]?.ToString(),
+                    row["ScenarioId"]?.ToString(),
+                    row["HsCode"]?.ToString(),
+                    row["ProductDescription"]?.ToString(),
+                    row["Rate"]?.ToString(),
+                    row["UoM"]?.ToString(),
+                    SafeDecimal(row["Quantity"], "Quantity", rowIndex),
+                    SafeDecimal(row["TotalValues"], "TotalValues", rowIndex),
+                    SafeDecimal(row["ValueSalesExcludingST"], "ValueSalesExcludingST", rowIndex),
+                    SafeDecimal(row["SalesTaxApplicable"], "SalesTaxApplicable", rowIndex),
+                    SafeDecimal(row["FixedNotifiedValueOrRetailPrice"], "FixedNotifiedValueOrRetailPrice", rowIndex),
+                    SafeDecimal(row["SalesTaxWithheldAtSource"], "SalesTaxWithheldAtSource", rowIndex),
+                    SafeDecimal(row["ExtraTax"], "ExtraTax", rowIndex),
+                    SafeDecimal(row["FurtherTax"], "FurtherTax", rowIndex),
+                    row["SroScheduleNo"]?.ToString(),
+                    SafeDecimal(row["FedPayable"], "FedPayable", rowIndex),
+                    SafeDecimal(row["Discount"], "Discount", rowIndex),
+                    row["SaleType"]?.ToString(),
+                    row["SroItemSerialNo"]?.ToString(),
+                    row["FBRInvoiceNumber"]?.ToString()
+                );
+                rowIndex++;
+            }
+
+            DataTable duplicates = CheckExistingInvoices(tvp);
+
+            if (duplicates.Rows.Count > 0)
+            {
+                string dupList = string.Join(", ", duplicates.AsEnumerable()
+                                            .Select(r => r["UniqueInvoiceID"].ToString()));
+                MessageBox.Show("Duplicate invoices found: " + dupList,
+                                "Validation Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return true;
+            }
+            else
+            { 
+                return false;
+            }
+        }
+
+        private int? SafeInt(object value, string columnName, int rowIndex)
+        {
+            if (value == null || value == DBNull.Value || string.IsNullOrWhiteSpace(value.ToString()))
+                return null;
+            if (int.TryParse(value.ToString(), out int result))
+                return result;
+            MessageBox.Show($"Invalid integer in column '{columnName}' at row {rowIndex + 1}: '{value}'");
+            return null;
+        }
+
+        private decimal? SafeDecimal(object value, string columnName, int rowIndex)
+        {
+            if (value == null || value == DBNull.Value || string.IsNullOrWhiteSpace(value.ToString()))
+                return null;
+            if (decimal.TryParse(value.ToString(), out decimal result))
+                return result;
+            MessageBox.Show($"Invalid decimal in column '{columnName}' at row {rowIndex + 1}: '{value}'");
+            return null;
+        }
+
+        private DateTime? SafeDate(object value, string columnName, int rowIndex)
+        {
+            if (value == null || value == DBNull.Value || string.IsNullOrWhiteSpace(value.ToString()))
+                return null;
+            if (DateTime.TryParse(value.ToString(), out DateTime result))
+                return result;
+            MessageBox.Show($"Invalid date in column '{columnName}' at row {rowIndex + 1}: '{value}'");
+            return null;
+        }
+
+
+        private async void btnSubmit_Click(object sender, EventArgs e)
+        {
+            btnSubmit.Enabled = false;
+            progressBar1.Visible = true;
+            lblProgress.Visible = true;
+            progressBar1.Value = 0;
+
+            if(CheckBeforeSubmission())
+            {
+                btnSubmit.Enabled = true;
+                return;
+            }
+
+            try
+            {
+                var result = FbrLibraryClasses.ConvertGridToFbrInvoices(this.FrbInvGrid);
+                int total = result.Count;
+
+                if (total == 0)
+                {
+                    MessageBox.Show("No invoices found to submit.");
+                    return;
+                }
+                if (!FrbInvGrid.Columns.Contains("FBRInvoiceNumber"))
+                {
+                    FrbInvGrid.Columns.Add("FBRInvoiceNumber", "FBR Invoice Number");
+                }
+              
+                progressBar1.Maximum = total;
+
+                await Task.Run(() =>
+                {
+                    var obj = new Fbr_DigitalInvoicing();
+                    int current = 0;
+
+                    for (int i = 0; i < result.Count; i++)
+                    {
+                        var data = result[i];
+                        bool alreadySent = FrbInvGrid.Rows
+        .Cast<DataGridViewRow>()
+        .Any(r =>
+            r.Cells["UniqueInvoiceID"].Value?.ToString() == data.UniqueInvoiceID &&
+            r.Cells["FbrInvoiceNumber"] != null &&
+            r.Cells["FbrInvoiceNumber"].Value != null &&
+            !string.IsNullOrWhiteSpace(r.Cells["FbrInvoiceNumber"].Value.ToString())
+        );
+
+                        if (alreadySent)
+                            continue;
+
+                      
+                        ApiResponse response = null;
+
+                        try
+                        {
+                            bool isRunningInVisualStudio = Debugger.IsAttached;
+                            if (LoginInfo.EnableSandBox && !isRunningInVisualStudio)
+                            {
+                                response = obj.SendModelToApi(data, LoginInfo.FbrTokenProduction,false,true);
+                            }
+                            else
+                            {
+                                response = obj.SendModelToApi(data, LoginInfo.FbrTokenSandBox);
+                            }
+
+                            Invoke(new Action(() =>
+                            {
+                                if (response != null && response.validationResponse?.statusCode == "00")
+                                {
+                                    // If column doesn't exist, create it (once)
+                                    if (!FrbInvGrid.Columns.Contains("FbrInvoiceNumber"))
+                                    {
+                                        FrbInvGrid.Columns.Add("FbrInvoiceNumber", "FBR Invoice #");
+                                    }
+
+                                    string fbrNo = response.invoiceNumber ?? "";
+                                    string uniqueId = data.UniqueInvoiceID; 
+
+                                    // ✅ Update all rows with same UniqueInvoiceID
+                                    foreach (DataGridViewRow r in FrbInvGrid.Rows)
+                                    {
+                                        if (r.Cells["UniqueInvoiceID"].Value?.ToString() == uniqueId)
+                                        {
+                                            r.Cells["FbrInvoiceNumber"].Value = fbrNo;
+                                            r.DefaultCellStyle.BackColor = Color.LightGreen;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    string uniqueId = data.UniqueInvoiceID;
+
+                                    // ✅ Update all rows with same UniqueInvoiceID
+                                    foreach (DataGridViewRow r in FrbInvGrid.Rows)
+                                    {
+                                        if (r.Cells["UniqueInvoiceID"].Value?.ToString() == uniqueId)
+                                        {
+                                            r.DefaultCellStyle.BackColor = Color.OrangeRed;
+                                        }
+                                      
+                                      
+                                    }
+
+                                    string err = response?.validationResponse?.error ?? "Unknown error";
+                                    // ❌ Stop processing here
+                                    MessageBox.Show($"Invoice submission failed:\n{err}", "API Submission Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    throw new Exception(err); // break outer loop
+                                }
+
+                                progressBar1.Value = ++current;
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            Invoke(new Action(() =>
+                            {
+                                MessageBox.Show($"Error in invoice:\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                progressBar1.Value = ++current;
+                            }));
+                            break; // ❌ stop loop on error
+                        }
+                    }
+                });
+
+                MessageBox.Show("Invoice submission process completed.");
+                btnExportExcel.Visible = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}", "Submission Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                progressBar1.Visible = false;
+                lblProgress.Visible = false;
+                btnSubmit.Enabled = true;
+            }
+        }
+
+
+        private void btnExportExcel_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            if (FrbInvGrid.Rows.Count == 0)
+            {
+                MessageBox.Show("There is no data to export.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (SaveFileDialog sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "Excel Workbook|*.xlsx";
+                sfd.FileName = "FBRInvoicesExport.xlsx";
+
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    using (var workbook = new XLWorkbook())
+                    {
+                        var worksheet = workbook.Worksheets.Add("FBR Invoices");
+
+                        // Add headers
+                        for (int col = 0; col < FrbInvGrid.Columns.Count; col++)
+                        {
+                            worksheet.Cell(1, col + 1).Value = FrbInvGrid.Columns[col].HeaderText;
+                            worksheet.Cell(1, col + 1).Style.Font.Bold = true;
+                        }
+
+                        // Add data
+                        for (int row = 0; row < FrbInvGrid.Rows.Count; row++)
+                        {
+                            for (int col = 0; col < FrbInvGrid.Columns.Count; col++)
+                            {
+                                object value = FrbInvGrid.Rows[row].Cells[col].Value;
+                                worksheet.Cell(row + 2, col + 1).Value = value?.ToString();
+                            }
+                        }
+
+                        workbook.SaveAs(sfd.FileName);
+                        MessageBox.Show("Data exported successfully to Excel.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Export failed:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+        private DataTable CheckExistingInvoices(DataTable tvp)
+        {
+            Connection cs = new Connection();
+            DataTable existingInvoices = new DataTable();
+
+            using (SqlConnection conn = new SqlConnection(cs.GetConnectionString()))
+            using (SqlCommand cmd = new SqlCommand("CheckFbrInvoicesExistence", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                SqlParameter tvpParam = cmd.Parameters.AddWithValue("@InvoiceData", tvp);
+                tvpParam.SqlDbType = SqlDbType.Structured;
+                tvpParam.TypeName = "FbrInvoicesType";
+
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(existingInvoices);
+                }
+            }
+
+            return existingInvoices;
+        }
+
+
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (FrbInvGrid.DataSource == null)
+                {
+                    MessageBox.Show("No data to save. Please upload an Excel file first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DataTable dt = GetGridDataWithFBRNumber();
+                if (dt != null && !dt.Columns.Contains("FBRInvoiceNumber"))
+                {
+                    dt.Columns.Add("FBRInvoiceNumber", typeof(string));
+                }
+                // ✅ Map Excel DataTable to SQL Table-Valued Parameter
+                DataTable tvp = new DataTable();
+                tvp.Columns.Add("UniqueInvoiceID", typeof(int));
+                tvp.Columns.Add("InvoiceType", typeof(string));
+                tvp.Columns.Add("InvoiceDate", typeof(DateTime));
+                tvp.Columns.Add("SellerBusinessName", typeof(string));
+                tvp.Columns.Add("SellerProvince", typeof(string));
+                tvp.Columns.Add("SellerAddress", typeof(string));
+                tvp.Columns.Add("SellerNTNCNIC", typeof(string));
+                tvp.Columns.Add("BuyerNTNCNIC", typeof(string));
+                tvp.Columns.Add("BuyerBusinessName", typeof(string));
+                tvp.Columns.Add("BuyerProvince", typeof(string));
+                tvp.Columns.Add("BuyerAddress", typeof(string));
+                tvp.Columns.Add("InvoiceRefNo", typeof(string));
+                tvp.Columns.Add("BuyerRegistrationType", typeof(string));
+                tvp.Columns.Add("ScenarioId", typeof(string));
+                tvp.Columns.Add("HsCode", typeof(string));
+                tvp.Columns.Add("ProductDescription", typeof(string));
+                tvp.Columns.Add("Rate", typeof(string));
+                tvp.Columns.Add("UoM", typeof(string));
+                tvp.Columns.Add("Quantity", typeof(decimal));
+                tvp.Columns.Add("TotalValues", typeof(decimal));
+                tvp.Columns.Add("ValueSalesExcludingST", typeof(decimal));
+                tvp.Columns.Add("SalesTaxApplicable", typeof(decimal));
+                tvp.Columns.Add("FixedNotifiedValueOrRetailPrice", typeof(decimal));
+                tvp.Columns.Add("SalesTaxWithheldAtSource", typeof(decimal));
+                tvp.Columns.Add("ExtraTax", typeof(decimal));
+                tvp.Columns.Add("FurtherTax", typeof(decimal));
+                tvp.Columns.Add("SroScheduleNo", typeof(string));
+                tvp.Columns.Add("FedPayable", typeof(decimal));
+                tvp.Columns.Add("Discount", typeof(decimal));
+                tvp.Columns.Add("SaleType", typeof(string));
+                tvp.Columns.Add("SroItemSerialNo", typeof(string));
+                tvp.Columns.Add("FbrInvoiceNumber", typeof(string));
+
+                // ✅ Populate TVP from grid
+                int rowIndex = 0;
+                foreach (DataRow row in dt.Rows)
+                {
+                    tvp.Rows.Add(
+                        SafeInt(row["UniqueInvoiceID"], "UniqueInvoiceID", rowIndex),
+                        row["InvoiceType"]?.ToString(),
+                        SafeDate(row["InvoiceDate"], "InvoiceDate", rowIndex),
+                        row["SellerBusinessName"]?.ToString(),
+                        row["SellerProvince"]?.ToString(),
+                        row["SellerAddress"]?.ToString(),
+                        row["SellerNTNCNIC"]?.ToString(),
+                        row["BuyerNTNCNIC"]?.ToString(),
+                        row["BuyerBusinessName"]?.ToString(),
+                        row["BuyerProvince"]?.ToString(),
+                        row["BuyerAddress"]?.ToString(),
+                        row["InvoiceRefNo"]?.ToString(),
+                        row["BuyerRegistrationType"]?.ToString(),
+                        row["ScenarioId"]?.ToString(),
+                        row["HsCode"]?.ToString(),
+                        row["ProductDescription"]?.ToString(),
+                        row["Rate"]?.ToString(),
+                        row["UoM"]?.ToString(),
+                        SafeDecimal(row["Quantity"], "Quantity", rowIndex),
+                        SafeDecimal(row["TotalValues"], "TotalValues", rowIndex),
+                        SafeDecimal(row["ValueSalesExcludingST"], "ValueSalesExcludingST", rowIndex),
+                        SafeDecimal(row["SalesTaxApplicable"], "SalesTaxApplicable", rowIndex),
+                        SafeDecimal(row["FixedNotifiedValueOrRetailPrice"], "FixedNotifiedValueOrRetailPrice", rowIndex),
+                        SafeDecimal(row["SalesTaxWithheldAtSource"], "SalesTaxWithheldAtSource", rowIndex),
+                        SafeDecimal(row["ExtraTax"], "ExtraTax", rowIndex),
+                        SafeDecimal(row["FurtherTax"], "FurtherTax", rowIndex),
+                        row["SroScheduleNo"]?.ToString(),
+                        SafeDecimal(row["FedPayable"], "FedPayable", rowIndex),
+                        SafeDecimal(row["Discount"], "Discount", rowIndex),
+                        row["SaleType"]?.ToString(),
+                        row["SroItemSerialNo"]?.ToString(),
+                        row["FBRInvoiceNumber"]?.ToString()
+                    );
+                    rowIndex++;
+                }
+
+
+                DataTable duplicates = CheckExistingInvoices(tvp);
+
+                if (duplicates.Rows.Count > 0)
+                {
+                    string dupList = string.Join(", ", duplicates.AsEnumerable()
+                                                .Select(r => r["UniqueInvoiceID"].ToString()));
+                    MessageBox.Show("Duplicate invoices found: " + dupList,
+                                    "Validation Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                Connection cs = new Connection();
+                using (SqlConnection conn = new SqlConnection(cs.GetConnectionString()))
+                using (SqlCommand cmd = new SqlCommand("InsertFbrInvoices", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    SqlParameter tvpParam = cmd.Parameters.AddWithValue("@InvoiceData", tvp);
+                    tvpParam.SqlDbType = SqlDbType.Structured;
+                    tvpParam.TypeName = "FbrInvoicesType"; 
+
+                    conn.Open();
+                    object result = cmd.ExecuteScalar();
+                    conn.Close();
+
+                    if (result != null && Convert.ToBoolean(result))
+                        MessageBox.Show("Invoices saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    else
+                        MessageBox.Show("Failed to save invoices.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error saving invoices: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+    }
+}
+
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using ZXing;
+
+namespace WeightBridgeManagmentSystem.FBRModels
+{
+    class FbrLibraryClasses
+    {
+        public class Fbr_DigitalInvoicing
+        {
+            public string invoiceType { get; set; }
+            public string invoiceDate { get; set; }
+            public string sellerBusinessName { get; set; }
+            public string sellerProvince { get; set; }
+            public string sellerAddress { get; set; }
+            public string sellerNTNCNIC { get; set; }
+            public string buyerNTNCNIC { get; set; }
+            public string buyerBusinessName { get; set; }
+            public string buyerProvince { get; set; }
+            public string buyerAddress { get; set; }
+
+            public string invoiceRefNo { get; set; }
+            public string buyerRegistrationType { get; set; }
+            public string scenarioId { get; set; }
+
+            public List<Fbr_DigitalInvoicingDetail> items { get; set; }
+            // public string FbrInvoiceNumber { get; set; }
+            [JsonIgnore]
+            public string UniqueInvoiceID { get; set; }
+
+            public bool Validate(out ICollection<ValidationResult> results)
+            {
+                var context = new ValidationContext(this);
+                results = new List<ValidationResult>();
+                return Validator.TryValidateObject(this, context, results, true);
+            }
+          
+         
+     
+            public ApiResponse SendModelToApi(Fbr_DigitalInvoicing objInvoice, string token,bool isValidate=false,bool isProduction=false)
+            {
+                using (var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }))
+                {
+                    // Configure headers to match FBR portal
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Postman.Now/1.0"); // Match Postman-like behavior
+                    client.Timeout = TimeSpan.FromSeconds(30);
+
+                    // Serialize payload
+                    string jsonPayload = JsonConvert.SerializeObject(objInvoice, Formatting.Indented);
+                    Console.WriteLine("📤 Serialized JSON Payload:");
+                    Console.WriteLine(jsonPayload);
+
+                    var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                    // Configure SSL/TLS
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; // Include Tls13
+                                                                                       // For dev only: bypass SSL/TLS validation (remove in production)
+                    ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+
+                    HttpResponseMessage response = null;
+                    string result = string.Empty;
+
+                    try
+                    {
+
+                        if (isValidate)
+                        {
+                            if (isProduction)
+                            {
+                                response = client.PostAsync("https://gw.fbr.gov.pk/di_data/v1/di/validateinvoicedata", content).GetAwaiter().GetResult();
+                            }
+                            else
+                            {
+                                response = client.PostAsync("https://gw.fbr.gov.pk/di_data/v1/di/validateinvoicedata_sb", content).GetAwaiter().GetResult();
+                            }
+                            
+                        }
+                        else if(isProduction)
+                        {
+                            // Send request
+                            response = client.PostAsync("https://gw.fbr.gov.pk/di_data/v1/di/postinvoicedata", content).GetAwaiter().GetResult();
+                        }
+                        else
+                        {
+                            response = client.PostAsync("https://gw.fbr.gov.pk/di_data/v1/di/postinvoicedata_sb", content).GetAwaiter().GetResult();
+                        }
+                        Console.WriteLine($"✅ HTTP Status: {response.StatusCode}");
+                        Console.WriteLine($"📋 Content-Length: {response.Content.Headers.ContentLength ?? -1}");
+
+                        // Log headers
+                        Console.WriteLine("📋 Response Headers:");
+                        foreach (var header in response.Headers)
+                        {
+                            Console.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
+                        }
+
+                        // Check status code
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                            Console.WriteLine($"❌ Error Response: {result}");
+                            return new ApiResponse
+                            {
+                                validationResponse = new ValidationResponse
+                                {
+                                    statusCode = "98",
+                                    status = "Failed",
+                                    error = $"HTTP request failed with status: {response.StatusCode}, Response: {result}"
+                                }
+                            };
+                        }
+
+                        // Buffer response content
+                        response.Content.LoadIntoBufferAsync().GetAwaiter().GetResult();
+
+                        // Read response content
+                        result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        Console.WriteLine("📥 Raw Response:");
+                        Console.WriteLine("-----------------------------------");
+                        Console.WriteLine(result);
+
+                        // Fallback: Read stream directly if empty
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            Console.WriteLine("⚠️ Empty response from ReadAsStringAsync, trying fallback stream read");
+                            using (var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
+                            using (var reader = new StreamReader(stream, Encoding.UTF8))
+                            {
+                                result = reader.ReadToEnd();
+                                Console.WriteLine("📥 Fallback Stream Response:");
+                                Console.WriteLine(result);
+                            }
+                        }
+
+                        // Check for empty response
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            Console.WriteLine("❌ Empty response received");
+                            return new ApiResponse
+                            {
+                                validationResponse = new ValidationResponse
+                                {
+                                    statusCode = "99",
+                                    status = "Failed",
+                                    error = "API returned an empty response despite successful request"
+                                }
+                            };
+                        }
+
+                        // Check for non-JSON response
+                        if (!result.TrimStart().StartsWith("{") && !result.TrimStart().StartsWith("["))
+                        {
+                            Console.WriteLine("❌ Non-JSON response received:");
+                            Console.WriteLine(result);
+                            return new ApiResponse
+                            {
+                                validationResponse = new ValidationResponse
+                                {
+                                    statusCode = "96",
+                                    status = "Failed",
+                                    error = "Non-JSON response received from FBR API"
+                                }
+                            };
+                        }
+
+                        // Deserialize response
+                        var settings = new JsonSerializerSettings
+                        {
+                            MissingMemberHandling = MissingMemberHandling.Ignore,
+                            NullValueHandling = NullValueHandling.Include,
+                            ContractResolver = new DefaultContractResolver
+                            {
+                                NamingStrategy = new CamelCaseNamingStrategy()
+                            },
+                            Error = (sender, args) =>
+                            {
+                                Console.WriteLine($"⚠️ JSON Warning: {args.ErrorContext.Error.Message}");
+                                args.ErrorContext.Handled = true;
+                            }
+                        };
+
+                        var apiResponse = JsonConvert.DeserializeObject<ApiResponse>(result, settings);
+                        if (apiResponse == null)
+                        {
+                            Console.WriteLine("❌ Deserialization returned null");
+                            return new ApiResponse
+                            {
+                                validationResponse = new ValidationResponse
+                                {
+                                    statusCode = "94",
+                                    status = "Failed",
+                                    error = "Deserialization returned null API response"
+                                }
+                            };
+                        }
+
+                        if (apiResponse.validationResponse == null)
+                        {
+                            Console.WriteLine("❌ validationResponse is missing");
+                            apiResponse.validationResponse = new ValidationResponse
+                            {
+                                statusCode = "94",
+                                status = "Failed",
+                                error = "validationResponse is missing in the API response"
+                            };
+                        }
+
+                        var vr = apiResponse.validationResponse;
+
+                        if (vr.statusCode == "00")
+                        {
+                            Console.WriteLine("✅ Invoice posted successfully.");
+                            Console.WriteLine($"🧾 Invoice Number: {apiResponse.invoiceNumber}");
+                            foreach (var item in vr.invoiceStatuses ?? new List<InvoiceStatus>())
+                            {
+                                Console.WriteLine($"  - Item {item.itemSNo}: Status={item.status}, InvoiceNo={item.invoiceNo}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("❌ Invoice validation failed.");
+                            if (!string.IsNullOrEmpty(vr.error))
+                                Console.WriteLine($"Top-Level Error: {vr.error}");
+                            foreach (var item in vr.invoiceStatuses ?? new List<InvoiceStatus>())
+                            {
+                                Console.WriteLine($"  - Item {item.itemSNo}: Error={item.error}, Code={item.errorCode}");
+                            }
+                        }
+
+                        return apiResponse;
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        Console.WriteLine($"❌ HTTP POST failed: {ex.Message}");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "98",
+                                status = "Failed",
+                                error = $"HTTP POST exception: {ex.Message}"
+                            }
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Unexpected error: {ex.Message}");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "97",
+                                status = "Failed",
+                                error = $"Unexpected error: {ex.Message}"
+                            }
+                        };
+                    }
+                    finally
+                    {
+                        response?.Dispose();
+                    }
+                }
+            }
+            //public bool InsertFbrObject(Fbr_DigitalInvoicing a)
+            //{
+
+
+            //    DataTable dt = new DataTable();
+            //    var connectionString = GStatic.Connection();
+            //    SqlConnection con = new SqlConnection(connectionString);
+            //    SqlTransaction tran;
+            //    con.Open();
+            //    tran = con.BeginTransaction();
+            //    SqlCommand cmd = new SqlCommand("Fbr_DigitalInvoicing_Insert", con);
+            //    cmd.CommandType = CommandType.StoredProcedure;
+            //    SqlDataAdapter da = new SqlDataAdapter();
+            //    SqlParameter p = new SqlParameter("@MasterID", a.MasterID);
+            //    p.Direction = ParameterDirection.InputOutput; cmd.Parameters.Add(p);
+
+
+
+            //    cmd.Parameters.Add(new SqlParameter("@bposId", a.bposId));
+            //    cmd.Parameters.Add(new SqlParameter("@invoiceType", a.invoiceType));
+            //    cmd.Parameters.Add(new SqlParameter("@invoiceDate", a.invoiceDate));
+            //    cmd.Parameters.Add(new SqlParameter("@ntN_CNIC", a.ntN_CNIC));
+            //    cmd.Parameters.Add(new SqlParameter("@buyerSellerName", a.buyerSellerName));
+            //    cmd.Parameters.Add(new SqlParameter("@destinationAddress", a.destinationAddress));
+            //    cmd.Parameters.Add(new SqlParameter("@saleType", a.saleType));
+            //    cmd.Parameters.Add(new SqlParameter("@totalSalesTaxApplicable", a.totalSalesTaxApplicable));
+            //    cmd.Parameters.Add(new SqlParameter("@totalRetailPrice", a.totalRetailPrice));
+            //    cmd.Parameters.Add(new SqlParameter("@totalSTWithheldAtSource", a.totalSTWithheldAtSource));
+            //    cmd.Parameters.Add(new SqlParameter("@totalExtraTax", a.totalExtraTax));
+            //    cmd.Parameters.Add(new SqlParameter("@totalFEDPayable", a.totalFEDPayable));
+            //    cmd.Parameters.Add(new SqlParameter("@totalWithheldIncomeTax", a.totalWithheldIncomeTax));
+            //    cmd.Parameters.Add(new SqlParameter("@totalCVT", a.totalCVT));
+            //    cmd.Parameters.Add(new SqlParameter("@distributor_NTN_CNIC", a.distributor_NTN_CNIC));
+            //    cmd.Parameters.Add(new SqlParameter("@distributorName", a.distributorName));
+            //    cmd.Parameters.Add(new SqlParameter("@FbrInvoiceNumber", a.FbrInvoiceNumber));
+
+            //    cmd.Parameters.Add(new SqlParameter("@Fbr_DigitalInvoicingDetail", a.ToDataTable<Fbr_DigitalInvoicingDetail>(a.Items)));
+
+
+
+            //    da.SelectCommand = cmd;
+            //    try
+            //    {
+            //        cmd.Transaction = tran; da.Fill(dt); 
+            //        tran.Commit();
+            //        a.MasterID = Convert.ToInt32(p.Value.ToString());
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        tran.Rollback();
+            //        a.ErrorMsg = ex.Message;
+            //        return false;
+            //    }
+            //    finally
+            //    {
+            //        con.Close();
+            //    }
+
+            //    return true;
+
+            //}
+            public DataTable ToDataTable<T>(List<T> items)
+            {
+                DataTable dataTable = new DataTable(typeof(T).Name);
+                //Get all the properties
+                PropertyInfo[] Props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                foreach (PropertyInfo prop in Props)
+                {
+                    //Setting column names as Property names
+                    dataTable.Columns.Add(prop.Name);
+                }
+                foreach (T item in items)
+                {
+                    var values = new object[Props.Length];
+                    for (int i = 0; i < Props.Length; i++)
+                    {
+                        //inserting property values to datatable rows
+                        values[i] = Props[i].GetValue(item, null);
+                    }
+                    dataTable.Rows.Add(values);
+                }
+                //put a breakpoint here and check datatable
+                return dataTable;
+            }
+
+            public string GenerateQRCode(Fbr_DigitalInvoicing a, string ImageP, string QrImage)
+            {
+                //string folderPath = "~/QrImages/";
+                string imagePath = Convert.ToString(a.invoiceRefNo) + ".jpg";
+
+
+                var barcodeWriter = new BarcodeWriter();
+                barcodeWriter.Format = BarcodeFormat.QR_CODE;
+                var result = barcodeWriter.Write(a.invoiceRefNo);
+                string barcodePath = Path.Combine(ImageP, imagePath);
+                string barcodePathServer = Path.Combine(QrImage, imagePath);
+
+                var barcodeBitmap = new Bitmap(result);
+                using (MemoryStream memory = new MemoryStream())
+                {
+                    using (FileStream fs = new FileStream(barcodePath, FileMode.Create, FileAccess.ReadWrite))
+                    {
+                        barcodeBitmap.Save(memory, ImageFormat.Jpeg);
+                        byte[] bytes = memory.ToArray();
+                        fs.Write(bytes, 0, bytes.Length);
+                    }
+                }
+                return barcodePathServer;
+            }
+
+        }
+        public static List<FbrLibraryClasses.Fbr_DigitalInvoicing> ConvertGridToFbrInvoices(DataGridView grid)
+        {
+            var invoiceMap = new Dictionary<string, FbrLibraryClasses.Fbr_DigitalInvoicing>();
+
+            foreach (DataGridViewRow row in grid.Rows)
+            {
+                if (row.IsNewRow) continue;
+
+                string invoiceRefNo = Convert.ToString(row.Cells["UniqueInvoiceID"].Value);
+                if (string.IsNullOrWhiteSpace(invoiceRefNo)) continue;
+
+                if (!invoiceMap.ContainsKey(invoiceRefNo))
+                {
+                    // First time this invoiceRefNo encountered — create master
+                    var master = new FbrLibraryClasses.Fbr_DigitalInvoicing
+                    {
+                        UniqueInvoiceID= invoiceRefNo,
+                        invoiceType = Convert.ToString(row.Cells["invoiceType"].Value),
+                        invoiceDate = Convert.ToDateTime(row.Cells["invoiceDate"].Value).ToString("yyyy-MM-dd"),
+                        sellerBusinessName = Convert.ToString(row.Cells["sellerBusinessName"].Value),
+                        sellerProvince = Convert.ToString(row.Cells["sellerProvince"].Value),
+                        sellerAddress = Convert.ToString(row.Cells["sellerAddress"].Value),
+                        sellerNTNCNIC = Convert.ToString(row.Cells["sellerNTNCNIC"].Value),
+                        buyerNTNCNIC = Convert.ToString(row.Cells["buyerNTNCNIC"].Value),
+                        buyerBusinessName = Convert.ToString(row.Cells["buyerBusinessName"].Value),
+                        buyerProvince = Convert.ToString(row.Cells["buyerProvince"].Value),
+                        buyerAddress = Convert.ToString(row.Cells["buyerAddress"].Value),
+                        invoiceRefNo = Convert.ToString(row.Cells["invoiceRefNo"].Value),
+                        buyerRegistrationType = Convert.ToString(row.Cells["buyerRegistrationType"].Value),
+                        scenarioId = Convert.ToString(row.Cells["scenarioId"].Value),
+                        items = new List<FbrLibraryClasses.Fbr_DigitalInvoicingDetail>()
+                    };
+
+                    invoiceMap[invoiceRefNo] = master;
+                }
+
+                // Add detail line to current invoice
+                var detail = new FbrLibraryClasses.Fbr_DigitalInvoicingDetail
+                {
+                    hsCode = Convert.ToString(row.Cells["hsCode"].Value),
+                    productDescription = Convert.ToString(row.Cells["productDescription"].Value),
+                    rate = Convert.ToString((Convert.ToString(row.Cells["rate"].Value))),
+                    uoM = Convert.ToString(row.Cells["uoM"].Value),
+                    quantity = Convert.ToDecimal(row.Cells["quantity"].Value),
+                    totalValues = Convert.ToDecimal(row.Cells["totalValues"].Value),
+                    valueSalesExcludingST = Convert.ToString(row.Cells["valueSalesExcludingST"].Value),
+                    salesTaxApplicable = Convert.ToString(row.Cells["salesTaxApplicable"].Value),
+                    fixedNotifiedValueOrRetailPrice = Convert.ToDecimal(row.Cells["fixedNotifiedValueOrRetailPrice"].Value),
+                    salesTaxWithheldAtSource = Convert.ToDecimal(row.Cells["salesTaxWithheldAtSource"].Value),
+                    extraTax = Convert.ToString(row.Cells["extraTax"].Value),
+                    furtherTax = Convert.ToDecimal(row.Cells["furtherTax"].Value),
+                    sroScheduleNo = Convert.ToString(row.Cells["sroScheduleNo"].Value),
+                    fedPayable = Convert.ToDecimal(row.Cells["fedPayable"].Value),
+                    discount = Convert.ToDecimal(row.Cells["discount"].Value),
+                    saleType = Convert.ToString(row.Cells["saleType"].Value),
+                    sroItemSerialNo = Convert.ToString(row.Cells["sroItemSerialNo"].Value)
+                };
+
+                invoiceMap[invoiceRefNo].items.Add(detail);
+            }
+
+            return invoiceMap.Values.ToList();
+        }
+
+
+        public class Fbr_DigitalInvoicingDetail
+        {
+            public string hsCode { get; set; }                          // e.g., "0000.0000"
+            public string productDescription { get; set; }
+            public string rate { get; set; }                           //this is Tax Rate Percentage Not Retail Rate
+            public string uoM { get; set; }                             // Unit of Measurement
+            public decimal quantity { get; set; }
+            public decimal totalValues { get; set; }                    //This is Invoice Total Value Including Tax
+            public string valueSalesExcludingST { get; set; }           // Note: string in JSON
+            public string salesTaxApplicable { get; set; }              // Note: string in JSON
+            public decimal fixedNotifiedValueOrRetailPrice { get; set; }
+            public decimal salesTaxWithheldAtSource { get; set; }
+            public string extraTax { get; set; }
+            public decimal furtherTax { get; set; }
+            public string sroScheduleNo { get; set; }
+            public decimal fedPayable { get; set; }
+            public decimal discount { get; set; }
+            public string saleType { get; set; }     //Sale Type Must Be matched with Selected Tax % i.e (Services) has 16% Tax
+            public string sroItemSerialNo { get; set; }
+        }
+
+        public class ApiResponse
+        {
+            public string invoiceNumber { get; set; }
+            public string dated { get; set; }
+            public ValidationResponse validationResponse { get; set; }
+            public string ErrorMessage { get; set; }
+        }
+
+        public class ValidationResponse
+        {
+            public string statusCode { get; set; }
+            public string status { get; set; }
+            public string error { get; set; }
+            public List<InvoiceStatus> invoiceStatuses { get; set; }
+        }
+
+        public class InvoiceStatus
+        {
+            public string itemSNo { get; set; }
+            public string statusCode { get; set; }
+            public string status { get; set; }
+            public string invoiceNo { get; set; }
+            public string errorCode { get; set; }
+            public string error { get; set; }
+        }
+
+
+    }
+}
+
+
+  public ActionResult PunchInvoicesToFbr(string SaleIDs, byte SalesApproval)
+  {
+      try
+      {
+
+          if (string.IsNullOrWhiteSpace(SaleIDs))
+          {
+              return Content(JsonConvert.SerializeObject(new
+              {
+                  Message = "No SaleIDs provided."
+              }, Formatting.None, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore }), "application/json");
+          }
+
+
+
+
+
+          var FBRQImagePath = Server.MapPath("~/AppFiles/FbrQrDigital/");
+          string filePath = Server.MapPath("~/AppFiles/FBRInvoiceLogFallback.txt");
+          var FbrQrDigitalPath = "/AppFiles/FbrQrDigital/";
+
+          data_SaleInfoModel model = new data_SaleInfoModel
+          {
+              SalesApproval = SalesApproval
+          };
+          model.LoadCompanyAnduser();
+
+          var saleIdList = SaleIDs.Split(',')
+                                  .Select(id => id.Trim())
+                                  .Where(id => int.TryParse(id, out _))
+                                  .Select(int.Parse)
+                                  .Distinct()
+                                  .ToList();
+          if (!saleIdList.Any())
+          {
+              return Content(JsonConvert.SerializeObject(new
+              {
+                  Message = "Invalid SaleIDs provided."
+              }, Formatting.None, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore }), "application/json");
+          }
+
+          foreach (var saleId in saleIdList)
+          {
+              
+          if (System.IO.File.Exists(filePath))
+          {
+              string[] lines = System.IO.File.ReadAllLines(filePath);
+              foreach (string line in lines)
+              {
+                  string[] parts = line.Split(new[] { ',' }, 8);
+                  if (parts.Length == 8 && int.TryParse(parts[1], out int saleID) && saleID == saleId)
+                  {
+                      string existingFbrInvoiceNumber = parts[4];
+                      if (!string.IsNullOrEmpty(existingFbrInvoiceNumber))
+                      {
+                          throw new Exception($"An FBRInvoiceNumber ({existingFbrInvoiceNumber}) already exists for SaleID {saleId}. Please contact the developer.");
+                      }
+                  }
+              }
+          }
+          }
+
+          var results = new List<object>();
+
+          using (SqlConnection conn = new SqlConnection(GStatic.Connection()))
+          {
+              conn.Open();
+
+              foreach (var saleId in saleIdList)
+              {
+
+
+                 
+
+                  using (SqlTransaction transaction = conn.BeginTransaction())
+                  {
+                      try
+                      {
+                          if (!model.AcquireLock(saleId, conn, transaction))
+                          {
+
+                              results.Add(new
+                              {
+                                  SaleID = saleId,
+                                  Status = "Skipped",
+                                  Message = "SaleID is currently being processed by another request."
+                              });
+                              continue;
+                          }
+
+                          // Process the invoice since lock is acquired
+                          string result = model.PunchInvoicesToFBr(
+                              MasterID: saleId,
+                              UserID: model.UserID,
+                              CompanyID: model.CompanyID,
+                              IsManufacturerFBR: true,
+                              FBRInvoiceNumber: "",
+                              FBRQImagePath: FBRQImagePath,
+                              FbrQrDigitalPath: FbrQrDigitalPath,
+                              connection:conn,
+                              transaction:transaction,
+                              filePath: filePath
+                          );
+
+                          // Commit the transaction if successful
+                          transaction.Commit();
+
+                          results.Add(new
+                          {
+                              SaleID = saleId,
+                              Status = "Success",
+                              Message = result
+                          });
+                      }
+                      catch (Exception ex)
+                      {
+                          // Roll back the transaction on error
+                          transaction.Rollback();
+                          results.Add(new
+                          {
+                              SaleID = saleId,
+                              Status = "Error",
+                              Message = $"Error processing SaleID {saleId}: {ex.Message}"
+                          });
+                          var jsonResponse2 = JsonConvert.SerializeObject(new
+                          {
+                              Message = $"Error processing SaleID {saleId}: {ex.Message}",
+                              Results = results
+                          }, Formatting.None, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore });
+                          return Content(jsonResponse2, "application/json");
+
+                      }
+                  }
+              }
+          }
+
+          // Serialize the results to JSON
+          var jsonResponse = JsonConvert.SerializeObject(new
+          {
+              Message = "Processing completed for all SaleIDs.",
+              Results = results
+          }, Formatting.None, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore });
+          return Content(jsonResponse, "application/json");
+      }
+      catch (Exception ex)
+      {
+          var jsonResponse = JsonConvert.SerializeObject(new
+          {
+              Message = $"Error processing SaleIDs: {ex.Message}",
+              Results = new List<object>()
+          }, Formatting.None, new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore });
+          return Content(jsonResponse, "application/json");
+      }
+  }
+
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Information;
+using SAGERPNEW2018.Models;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web;
+using ZXing;
+
+namespace SAGERPNEW2018.CustomHelper
+{
+
+    public class Fbr_DigitalInvoicing
+    {
+        public string invoiceType { get; set; }                   
+        public string invoiceDate { get; set; }                  
+        public string sellerBusinessName { get; set; }
+        public string sellerProvince { get; set; }
+        public string sellerAddress { get; set; }
+        public string sellerNTNCNIC { get; set; } 
+        public string buyerNTNCNIC { get; set; }
+        public string buyerBusinessName { get; set; }
+        public string buyerProvince { get; set; }
+        public string buyerAddress { get; set; }
+
+        public string invoiceRefNo { get; set; }
+        public string buyerRegistrationType { get; set; }         
+        public string scenarioId { get; set; }                    
+
+        public List<Fbr_DigitalInvoicingDetail> items { get; set; }
+       // public string FbrInvoiceNumber { get; set; }
+
+        public bool Validate(out ICollection<ValidationResult> results)
+        {
+            var context = new ValidationContext(this);
+            results = new List<ValidationResult>();
+            return Validator.TryValidateObject(this, context, results, true);
+        }
+        public DataTable GetFbr_Configurations(string Where = "")
+        {
+
+            DataTable DtFbrCofig = GStatic.ReturnDT("SELECT * FROM Fbr_Configurations WHERE 0=0 " + Where);
+
+            return DtFbrCofig;
+        }
+        public ApiResponse Fbr_DigitalInvoiceObject(data_SaleInfoModel a, string InvoiceType)
+        {
+            // Get Company Data
+            DataTable companyData = new GLBranchesModel().GetCompanyDataFbr("WHERE GLCompany.companyid = " + a.CompanyID);
+            if (companyData.Rows.Count == 0)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "93",
+                        status = "Failed",
+                        error = "Company data not found for CompanyId: " + a.CompanyID
+                    }
+                };
+            }
+
+            // Get FBR Config
+            var fbrConfig = GetFbr_Configurations("AND CompanyId = " + a.CompanyID);
+            if (fbrConfig.Rows.Count == 0)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "93",
+                        status = "Failed",
+                        error = "FBR configuration not found for CompanyId: " + a.CompanyID
+                    }
+                };
+            }
+            var IstaxExcludingDiscount =fbrConfig.Rows[0]["IstaxExcludingDiscount"] is DBNull ? false : Convert.ToBoolean(fbrConfig.Rows[0]["IstaxExcludingDiscount"]);
+
+            // Get Party Info
+            DataTable partyDt = GStatic.ReturnDT($@"
+SELECT PartyName, ISNULL(NTNNO,'') AS NTNNO, ISNULL(CNIC,'') AS CNIC,
+       ISNULL(PhoneOne,'') AS PhoneOne, ISNULL(AddressOne,'') AS AddressOne,
+       ISNULL(AddressTwo,'') AS AddressTwo,
+ Isnull(Fbr_ProvinceData.Provincename,'') as Provincename
+FROM dbo.gen_PartiesInfo left JOIN Fbr_ProvinceData ON Fbr_ProvinceData.ProvinceID=gen_PartiesInfo.ProvinceID
+WHERE partyid = {a.PartyID}");
+            var isRegistered = "Unregistered";
+            string cnic = "", ntn = "";
+            var AddressBuyer = "";
+            if (partyDt.Rows.Count > 0)
+            {
+                a.PartyName = partyDt.Rows[0]["PartyName"].ToString();
+                ntn = partyDt.Rows[0]["NTNNO"].ToString();
+                cnic = partyDt.Rows[0]["CNIC"].ToString();
+                AddressBuyer = Convert.ToString(partyDt.Rows[0]["AddressOne"])+' ' + Convert.ToString(partyDt.Rows[0]["AddressTwo"]);
+                if (!string.IsNullOrEmpty(ntn))
+                {
+                    isRegistered = "Registered";
+                }
+            }
+
+            // Prepare main invoice object
+            Fbr_DigitalInvoicing fbrObj = new Fbr_DigitalInvoicing
+            {
+                invoiceType = InvoiceType,
+                invoiceDate = a.SaleDate.ToString("yyyy-MM-dd"),
+                sellerBusinessName = Convert.ToString(companyData.Rows[0]["Title"]),
+                sellerNTNCNIC = Convert.ToString(companyData.Rows[0]["NTNNo"]),
+                sellerProvince = Convert.ToString(companyData.Rows[0]["Provincename"]),
+                sellerAddress = Convert.ToString(companyData.Rows[0]["Address"]),
+                buyerNTNCNIC = !string.IsNullOrEmpty(ntn) ? ntn.Split('-')[0] : cnic,
+                buyerBusinessName = a.PartyName,
+                buyerProvince = Convert.ToString(partyDt.Rows[0]["Provincename"]),
+                buyerAddress = AddressBuyer,
+                invoiceRefNo = "",
+                buyerRegistrationType = isRegistered,
+                scenarioId = "SN000",
+                items = null
+            };
+            fbrObj.items=Fbr_DigitalInvoicingDetail(a.DetailDataTable, a.SaleDate, fbrObj, IstaxExcludingDiscount,a.IsInvoiceInPieces);
+            // Send to FBR API
+           var CheckifLive= GStatic.isProduction();
+            var response = SendModelToApi(fbrObj, Convert.ToString(fbrConfig.Rows[0]["AccessToken"]), CheckifLive);
+
+            // Check for null response
+            if (response == null)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "92",
+                        status = "Failed",
+                        error = "API response is null"
+                    }
+                };
+            }
+
+            // Check for null validationResponse
+            if (response.validationResponse == null)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "94",
+                        status = "Failed",
+                        error = "validationResponse is missing in the API response"
+                    }
+                };
+            }
+
+            // Process response
+            bool checkIfAnyError = false;
+
+            if (!string.IsNullOrEmpty(response.validationResponse.error))
+            {
+                checkIfAnyError = true;
+                throw new Exception(response.validationResponse.error);
+            }
+
+            if (response.validationResponse.invoiceStatuses != null)
+            {
+                foreach (var item in response.validationResponse.invoiceStatuses)
+                {
+                    if (!string.IsNullOrEmpty(item.error))
+                    {
+                        checkIfAnyError = true;
+                        throw new Exception($"Item {item.itemSNo}: {item.error}");
+                    }
+                }
+            }
+
+            if (!checkIfAnyError)
+            {
+                fbrObj.invoiceRefNo = response.invoiceNumber;
+                 a.AttachmentSix = fbrObj.GenerateQRCode(fbrObj, a.FBRQImagePath, a.FbrQrDigitalPath);
+                
+            }
+
+            return response;
+        }
+
+
+        public ApiResponse Fbr_DigitalInvoiceObjectForSaleReturn(data_SaleReturnInfoModel a, string InvoiceType)
+        {
+            // Get Company Data
+            DataTable companyData = new GLBranchesModel().GetCompanyDataFbr("WHERE GLCompany.companyid = " + a.CompanyID);
+            if (companyData.Rows.Count == 0)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "93",
+                        status = "Failed",
+                        error = "Company data not found for CompanyId: " + a.CompanyID
+                    }
+                };
+            }
+
+            // Get FBR Config
+            var fbrConfig = GetFbr_Configurations("AND CompanyId = " + a.CompanyID);
+            if (fbrConfig.Rows.Count == 0)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "93",
+                        status = "Failed",
+                        error = "FBR configuration not found for CompanyId: " + a.CompanyID
+                    }
+                };
+            }
+
+            // Get Party Info
+            var IstaxExcludingDiscount = fbrConfig.Rows[0]["IstaxExcludingDiscount"] is DBNull ? false : Convert.ToBoolean(fbrConfig.Rows[0]["IstaxExcludingDiscount"]);
+
+            // Get Party Info
+            DataTable partyDt = GStatic.ReturnDT($@"
+SELECT PartyName, ISNULL(NTNNO,'') AS NTNNO, ISNULL(CNIC,'') AS CNIC,
+       ISNULL(PhoneOne,'') AS PhoneOne, ISNULL(AddressOne,'') AS AddressOne,
+       ISNULL(AddressTwo,'') AS AddressTwo,
+ Isnull(Fbr_ProvinceData.Provincename,'') as Provincename
+FROM dbo.gen_PartiesInfo left JOIN Fbr_ProvinceData ON Fbr_ProvinceData.ProvinceID=gen_PartiesInfo.ProvinceID
+WHERE partyid = {a.PartyID}");
+            var isRegistered = "Unregistered";
+            string cnic = "", ntn = "";
+            var AddressBuyer = "";
+            if (partyDt.Rows.Count > 0)
+            {
+                a.PartyName = partyDt.Rows[0]["PartyName"].ToString();
+                ntn = partyDt.Rows[0]["NTNNO"].ToString();
+                cnic = partyDt.Rows[0]["CNIC"].ToString();
+                AddressBuyer = Convert.ToString(partyDt.Rows[0]["AddressOne"]) + ' ' + Convert.ToString(partyDt.Rows[0]["AddressTwo"]);
+                if (!string.IsNullOrEmpty(ntn))
+                {
+                    isRegistered = "Registered";
+                }
+            }
+
+            // Prepare main invoice object
+            Fbr_DigitalInvoicing fbrObj = new Fbr_DigitalInvoicing
+            {
+                invoiceType = InvoiceType,
+                invoiceDate = a.SaleDate.ToString("yyyy-MM-dd"),
+                sellerBusinessName = Convert.ToString(companyData.Rows[0]["Title"]),
+                sellerNTNCNIC = Convert.ToString(companyData.Rows[0]["NTNNo"]),
+                sellerProvince = Convert.ToString(companyData.Rows[0]["Provincename"]),
+                sellerAddress = Convert.ToString(companyData.Rows[0]["Address"]),
+                buyerNTNCNIC = !string.IsNullOrEmpty(ntn) ? ntn.Split('-')[0] : cnic,
+                buyerBusinessName = a.PartyName,
+                buyerProvince = Convert.ToString(partyDt.Rows[0]["Provincename"]),
+                buyerAddress = AddressBuyer,
+                invoiceRefNo = a.SaleFbrInvoiceNumber+"-1",
+                buyerRegistrationType = isRegistered,
+                scenarioId = "SN000",
+                items = null
+            };
+            fbrObj.items = Fbr_DigitalInvoicingDetailReturnNew(a.DetailDataTable, a.SaleReturnDate, fbrObj, IstaxExcludingDiscount, false);
+            // Send to FBR API
+            var CheckifLive = GStatic.isProduction();
+            var response = SendModelToApi(fbrObj, Convert.ToString(fbrConfig.Rows[0]["AccessToken"]), CheckifLive);
+
+            // Check for null response
+            if (response == null)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "92",
+                        status = "Failed",
+                        error = "API response is null"
+                    }
+                };
+            }
+
+            // Check for null validationResponse
+            if (response.validationResponse == null)
+            {
+                return new ApiResponse
+                {
+                    validationResponse = new ValidationResponse
+                    {
+                        statusCode = "94",
+                        status = "Failed",
+                        error = "validationResponse is missing in the API response"
+                    }
+                };
+            }
+
+            // Process response
+            bool checkIfAnyError = false;
+
+            if (!string.IsNullOrEmpty(response.validationResponse.error))
+            {
+                checkIfAnyError = true;
+                throw new Exception(response.validationResponse.error);
+            }
+
+            if (response.validationResponse.invoiceStatuses != null)
+            {
+                foreach (var item in response.validationResponse.invoiceStatuses)
+                {
+                    if (!string.IsNullOrEmpty(item.error))
+                    {
+                        checkIfAnyError = true;
+                        throw new Exception($"Item {item.itemSNo}: {item.error}");
+                    }
+                }
+            }
+
+            if (!checkIfAnyError)
+            {
+                fbrObj.invoiceRefNo = response.invoiceNumber;
+                var FbrImagePath = fbrObj.GenerateQRCode(fbrObj, a.FBRQImagePath, a.FbrQrDigitalPath);
+
+            }
+
+            return response;
+        }
+        private List<Fbr_DigitalInvoicingDetail> Fbr_DigitalInvoicingDetail(DataTable dtDetail,DateTime InvoiceDate, Fbr_DigitalInvoicing fbrObj, bool IstaxExcludingDiscount=false,bool IsInvoicesInPieces=false)
+        {
+            List<Fbr_DigitalInvoicingDetail> lst = new List<Fbr_DigitalInvoicingDetail>();
+            gen_TaxInfoModel TaxDetails = new gen_TaxInfoModel();
+
+            var ConfigDt = GStatic.GetSelectedData("Select FareedUnitNo from gen_systemconfiguration");
+
+            int FareedUnitNo = ConfigDt.Rows[0]["FareedUnitNo"] is DBNull ? 0
+                              : Convert.ToInt32(ConfigDt.Rows[0]["FareedUnitNo"]);
+            for (int i = 0; i < dtDetail.Rows.Count; i++)
+            {
+                int ItemID = Convert.ToInt32(dtDetail.Rows[i]["ItemId"]);
+
+                int TaxOneID = dtDetail.Rows[i]["TaxOneID"] is DBNull ? 0 : Convert.ToInt32(dtDetail.Rows[i]["TaxOneID"]);
+                int TaxTwoID = dtDetail.Rows[i]["TaxTwoID"] is DBNull?0:Convert.ToInt32(dtDetail.Rows[i]["TaxTwoID"]);
+                var TaxOneDataDetail= TaxDetails.GetFbrTaxDetailsSRo((short)TaxOneID, InvoiceDate);
+                var taxTwoDataDetail = TaxDetails.GetFbrTaxDetailsSRo((short)TaxTwoID, InvoiceDate);
+                string DetailRemarks= dtDetail.Rows[i]["Remarks"] is DBNull ? "" : Convert.ToString(dtDetail.Rows[i]["Remarks"]);
+                string TaxOneRate = "0";
+                var SROScheduleNo = "";
+                var sroSerialNo="";
+                var SaleType = "";
+
+                decimal TaxRateOneValue = 0;
+                if (TaxOneDataDetail.Rows.Count > 0)
+                {
+                    var value = TaxOneDataDetail.Rows[0]["ratE_DESC"];
+                    TaxOneRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+
+                    var rate_Value = TaxOneDataDetail.Rows[0]["rate_Value"];
+                    TaxRateOneValue = rate_Value == DBNull.Value ? 0 : Convert.ToDecimal(rate_Value);
+                    TaxOneRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+                    var SROSchedule = TaxOneDataDetail.Rows[0]["SRO_Desc"];
+                    SROScheduleNo = SROSchedule == DBNull.Value ? "" : Convert.ToString(SROSchedule);
+                    var sroItemSerial = TaxOneDataDetail.Rows[0]["SroItemSerNo"];
+                    sroSerialNo = sroItemSerial == DBNull.Value ? "" : Convert.ToString(sroItemSerial);
+                    var ScenarioIDFbr = TaxOneDataDetail.Rows[0]["FbrScenerioID"];
+                    fbrObj.scenarioId = ScenarioIDFbr == DBNull.Value ? "SN001" : Convert.ToString(ScenarioIDFbr);
+
+                    var ValSaleType = TaxOneDataDetail.Rows[0]["SaleType"];
+                    SaleType = ValSaleType == DBNull.Value ? "" : Convert.ToString(ValSaleType);
+
+                }
+
+                string TaxTwoRate = "0";
+
+                if (taxTwoDataDetail.Rows.Count > 0)
+                {
+                    var value = taxTwoDataDetail.Rows[0]["ratE_DESC"];
+                    TaxTwoRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+                    var SROSchedule = taxTwoDataDetail.Rows[0]["SRO_Desc"];
+                    SROScheduleNo = SROSchedule == DBNull.Value ? "" : Convert.ToString(SROSchedule);
+                    var sroItemSerial = taxTwoDataDetail.Rows[0]["SroItemSerNo"];
+                    sroSerialNo = sroItemSerial == DBNull.Value ? "" : Convert.ToString(sroItemSerial);
+                    var ScenarioIDFbr = taxTwoDataDetail.Rows[0]["FbrScenerioID"];
+                    fbrObj.scenarioId = ScenarioIDFbr == DBNull.Value ? "SN001" : Convert.ToString(ScenarioIDFbr);
+                    var ValSaleType = TaxOneDataDetail.Rows[0]["SaleType"];
+                    SaleType = ValSaleType == DBNull.Value ? "" : Convert.ToString(ValSaleType);
+
+                }
+
+                DataTable dtItemDetails = GStatic.ReturnDT(@" SELECT InventItems.HSCode,inventCategory.CHSCode,inventCategory.CSROCode,
+InventUom.FBR_UomCodes,InventUom.UOMName,
+Isnull(Fbr_SaleTypesCodesList.[Description],'') AS FbrSaleType,CartonSize,ItemId,ItenName,
+InventUom.FBR_Descrption
+ FROM InventItems
+INNER JOIN inventcategory ON inventCategory.CategoryID = InventItems.CategoryID
+INNER JOIN InventUom ON InventUOM.UOMId = InventItems.UOMId
+LEFT JOIN dbo.Fbr_SaleTypesCodesList ON Fbr_SaleTypesCodesList.SaleTypeID = InventCategory.FbrSaleTypeID
+where InventItems.itemID=
+ " + ItemID);
+
+                var CHScode = Convert.ToString(dtItemDetails.Rows[0]["CHSCode"]);
+                var HSCode = Convert.ToString(dtItemDetails.Rows[0]["HSCode"]);
+                if (string.IsNullOrEmpty(HSCode))
+                {
+                    HSCode = CHScode;
+
+                }
+
+                decimal CartonQuantity = 0;
+                var fixedNotifiedValueOrRetailPrice = Math.Round(Convert.ToDecimal(dtDetail.Rows[i]["ItemRate"]), 2, MidpointRounding.AwayFromZero);
+                var FbruoM = Convert.ToString(dtItemDetails.Rows[0]["FBR_UomCodes"]);
+                if (IsInvoicesInPieces)
+                {
+                    if (FareedUnitNo == 26)   //For Shabab Pakaages we are useing The Quanity after rejection
+                    {
+                        CartonQuantity = Convert.ToDecimal(dtDetail.Rows[i]["NetQuantity"]);
+                    }
+                    else
+                    {
+                        CartonQuantity = Convert.ToDecimal(dtDetail.Rows[i]["Quantity"]);
+                    }
+                        var TaxDivisonFactor = Convert.ToDecimal(TaxRateOneValue) / 100;
+                     fixedNotifiedValueOrRetailPrice = Convert.ToDecimal(dtDetail.Rows[i]["TaxOneAmount"]) / Convert.ToDecimal(TaxDivisonFactor);
+                    fixedNotifiedValueOrRetailPrice = Math.Round((fixedNotifiedValueOrRetailPrice / CartonQuantity), 2);
+                    FbruoM = Convert.ToString(dtItemDetails.Rows[0]["FBR_Descrption"]);
+                }
+                else
+                {
+                    if (FareedUnitNo == 26) //For Shabab Pakaages we are useing The Quanity after rejection
+                    {
+                        CartonQuantity = Convert.ToDecimal(dtDetail.Rows[i]["NetQuantity"]) / Convert.ToDecimal(dtItemDetails.Rows[0]["CartonSize"]);
+                    }
+                    else
+                    {
+                        CartonQuantity = Convert.ToDecimal(dtDetail.Rows[i]["Quantity"]) / Convert.ToDecimal(dtItemDetails.Rows[0]["CartonSize"]);
+                    }
+               
+                }
+                var GrossAmountIncludingDiscounts = Convert.ToDecimal(dtDetail.Rows[i]["NetAmount"])- Convert.ToDecimal(dtDetail.Rows[i]["TaxOneAmount"]) - Convert.ToDecimal(dtDetail.Rows[i]["TaxTwoAmount"]);
+
+                if (IstaxExcludingDiscount)
+                {
+                    GrossAmountIncludingDiscounts += Convert.ToDecimal(dtDetail.Rows[i]["DtNetDiscount"]);
+                }
+                Fbr_DigitalInvoicingDetail objItem = new Fbr_DigitalInvoicingDetail();
+                objItem.hsCode = HSCode;
+                objItem.productDescription = Convert.ToString(dtItemDetails.Rows[0]["ItenName"])+" "+DetailRemarks;
+                objItem.rate = Convert.ToString(TaxOneRate);
+                objItem.uoM = FbruoM;
+                objItem.quantity = Math.Round(CartonQuantity,2);
+                objItem.totalValues = Math.Round(Convert.ToDecimal(dtDetail.Rows[i]["NetAmount"]),2);
+                objItem.valueSalesExcludingST = Convert.ToString(
+    Math.Floor(GrossAmountIncludingDiscounts * 100) / 100
+);
+                decimal tax = dtDetail.Rows[i]["TaxOneAmount"] is DBNull
+     ? 0.00m
+     : Convert.ToDecimal(dtDetail.Rows[i]["TaxOneAmount"]);
+                tax = Math.Round(tax, 2, MidpointRounding.AwayFromZero);
+
+                objItem.salesTaxApplicable = tax.ToString("0.00");
+
+                //objItem.fixedNotifiedValueOrRetailPrice = fixedNotifiedValueOrRetailPrice;
+                objItem.fixedNotifiedValueOrRetailPrice = 0;
+                objItem.salesTaxWithheldAtSource = 0;
+                var ExtrataxValue = dtDetail.Rows[i]["TaxTwoAmount"];
+                objItem.extraTax = (ExtrataxValue == DBNull.Value || Convert.ToDecimal(ExtrataxValue) == 0) ? "" : ((decimal)dtDetail.Rows[i]["TaxTwoAmount"]).ToString("F2");
+                objItem.furtherTax = 0;
+                objItem.sroScheduleNo = SROScheduleNo;
+                objItem.fedPayable = 0;
+               
+                objItem.discount = Math.Round((Convert.ToDecimal(dtDetail.Rows[i]["DtNetDiscount"])), 2);
+                objItem.saleType = SaleType;
+                objItem.sroItemSerialNo = sroSerialNo;
+                lst.Add(objItem);
+            }
+            return lst;
+        }
+
+        private List<Fbr_DigitalInvoicingDetail> Fbr_DigitalInvoicingDetailReturn(DataTable dtDetail, DateTime InvoiceDate)
+        {
+            List<Fbr_DigitalInvoicingDetail> lst = new List<Fbr_DigitalInvoicingDetail>();
+            gen_TaxInfoModel TaxDetails = new gen_TaxInfoModel();
+            for (int i = 0; i < dtDetail.Rows.Count; i++)
+            {
+                int ItemID = Convert.ToInt32(dtDetail.Rows[i]["ItemId"]);
+
+                int TaxOneID = dtDetail.Rows[i]["TaxOneID"] is DBNull ? 0 : Convert.ToInt32(dtDetail.Rows[i]["TaxOneID"]);
+                int TaxTwoID = dtDetail.Rows[i]["TaxTwoID"] is DBNull ? 0 : Convert.ToInt32(dtDetail.Rows[i]["TaxTwoID"]);
+                var TaxOneDataDetail = TaxDetails.GetTax((short)TaxOneID, InvoiceDate);
+                var taxTwoDataDetail = TaxDetails.GetTax((short)TaxTwoID, InvoiceDate);
+
+                string TaxOneRate = "0";
+
+                if (TaxOneDataDetail.Rows.Count > 0)
+                {
+                    var value = TaxOneDataDetail.Rows[0]["TaxPercentage"];
+                    TaxOneRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+                    TaxOneRate = Convert.ToString(Math.Round(Convert.ToDecimal(TaxOneRate), 0));
+                }
+
+                string TaxTwoRate = "0";
+
+                if (taxTwoDataDetail.Rows.Count > 0)
+                {
+                    var value = taxTwoDataDetail.Rows[0]["TaxPercentage"];
+                    TaxTwoRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+                    TaxTwoRate = Convert.ToString(Math.Round(Convert.ToDecimal(TaxTwoRate), 0));
+                }
+
+                DataTable dtItemDetails = GStatic.ReturnDT(@" SELECT InventItems.HSCode,inventCategory.CHSCode,inventCategory.CSROCode,
+InventUom.FBR_UomCodes,InventUom.UOMName,
+Isnull(Fbr_SaleTypesCodesList.[Description],'') AS FbrSaleType,CartonSize,ItemId
+ FROM InventItems
+INNER JOIN inventcategory ON inventCategory.CategoryID = InventItems.CategoryID
+INNER JOIN InventUom ON InventUOM.UOMId = InventItems.UOMId
+LEFT JOIN dbo.Fbr_SaleTypesCodesList ON Fbr_SaleTypesCodesList.SaleTypeID = InventCategory.FbrSaleTypeID
+where InventItems.itemID=
+ " + ItemID);
+
+                var CHScode = Convert.ToString(dtItemDetails.Rows[0]["CHSCode"]);
+                var HSCode = Convert.ToString(dtItemDetails.Rows[0]["HSCode"]);
+                if (string.IsNullOrEmpty(HSCode))
+                {
+                    HSCode = CHScode;
+
+                }
+                var CSROCode = Convert.ToString(dtItemDetails.Rows[0]["CSROCode"]);
+
+                var CartonQuantity = Convert.ToDecimal(dtDetail.Rows[i]["Quantity"]) / Convert.ToDecimal(dtItemDetails.Rows[0]["CartonSize"]);
+                var AmountExcludingTaxes = Convert.ToDecimal(dtDetail.Rows[i]["NetAmount"]) - Convert.ToDecimal(dtDetail.Rows[i]["TaxOneAmount"]) - Convert.ToDecimal(dtDetail.Rows[i]["TaxTwoAmount"]);
+                Fbr_DigitalInvoicingDetail objItem = new Fbr_DigitalInvoicingDetail();
+                objItem.hsCode = HSCode;
+                objItem.productDescription = Convert.ToString(dtDetail.Rows[i]["ItenName"]);
+                objItem.rate = Convert.ToString(TaxOneRate) + "%";
+                objItem.uoM = Convert.ToString(dtItemDetails.Rows[0]["FBR_UomCodes"]); ;
+                objItem.quantity = CartonQuantity;
+                objItem.totalValues = Convert.ToDecimal(dtDetail.Rows[i]["NetAmount"]);
+                objItem.valueSalesExcludingST = Convert.ToString(AmountExcludingTaxes);
+                objItem.salesTaxApplicable = Convert.ToString(dtDetail.Rows[i]["TaxOneAmount"]);
+                objItem.fixedNotifiedValueOrRetailPrice = Convert.ToDecimal(dtDetail.Rows[i]["ItemRate"]);
+                objItem.salesTaxWithheldAtSource = 0;
+                objItem.extraTax = Convert.ToString(dtDetail.Rows[i]["TaxTwoAmount"]);
+                objItem.furtherTax = 0;
+                objItem.sroScheduleNo = CSROCode;
+                objItem.fedPayable = 0;
+
+                objItem.discount = Math.Round((Convert.ToDecimal(dtDetail.Rows[i]["RTNetDiscount"])), 2);
+                objItem.saleType = Convert.ToString(dtItemDetails.Rows[0]["FbrSaleType"]);
+                objItem.sroItemSerialNo = "";
+                lst.Add(objItem);
+            }
+            return lst;
+        }
+
+
+        private List<Fbr_DigitalInvoicingDetail> Fbr_DigitalInvoicingDetailReturnNew(DataTable dtDetail, DateTime InvoiceDate, Fbr_DigitalInvoicing fbrObj, bool IstaxExcludingDiscount = false, bool IsInvoicesInPieces = false)
+        {
+            List<Fbr_DigitalInvoicingDetail> lst = new List<Fbr_DigitalInvoicingDetail>();
+            gen_TaxInfoModel TaxDetails = new gen_TaxInfoModel();
+            for (int i = 0; i < dtDetail.Rows.Count; i++)
+            {
+                int ItemID = Convert.ToInt32(dtDetail.Rows[i]["ItemId"]);
+
+                int TaxOneID = dtDetail.Rows[i]["TaxOneID"] is DBNull ? 0 : Convert.ToInt32(dtDetail.Rows[i]["TaxOneID"]);
+                int TaxTwoID = dtDetail.Rows[i]["TaxTwoID"] is DBNull ? 0 : Convert.ToInt32(dtDetail.Rows[i]["TaxTwoID"]);
+                var TaxOneDataDetail = TaxDetails.GetFbrTaxDetailsSRo((short)TaxOneID, InvoiceDate);
+                var taxTwoDataDetail = TaxDetails.GetFbrTaxDetailsSRo((short)TaxTwoID, InvoiceDate);
+                string DetailRemarks = dtDetail.Rows[i]["Remarks"] is DBNull ? "" : Convert.ToString(dtDetail.Rows[i]["Remarks"]);
+                string TaxOneRate = "0";
+                var SROScheduleNo = "";
+                var sroSerialNo = "";
+                var SaleType = "";
+
+                decimal TaxRateOneValue = 0;
+                if (TaxOneDataDetail.Rows.Count > 0)
+                {
+                    var value = TaxOneDataDetail.Rows[0]["ratE_DESC"];
+                    TaxOneRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+
+                    var rate_Value = TaxOneDataDetail.Rows[0]["rate_Value"];
+                    TaxRateOneValue = rate_Value == DBNull.Value ? 0 : Convert.ToDecimal(rate_Value);
+                    TaxOneRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+                    var SROSchedule = TaxOneDataDetail.Rows[0]["SRO_Desc"];
+                    SROScheduleNo = SROSchedule == DBNull.Value ? "" : Convert.ToString(SROSchedule);
+                    var sroItemSerial = TaxOneDataDetail.Rows[0]["SroItemSerNo"];
+                    sroSerialNo = sroItemSerial == DBNull.Value ? "" : Convert.ToString(sroItemSerial);
+                    var ScenarioIDFbr = TaxOneDataDetail.Rows[0]["FbrScenerioID"];
+                    fbrObj.scenarioId = ScenarioIDFbr == DBNull.Value ? "SN001" : Convert.ToString(ScenarioIDFbr);
+
+                    var ValSaleType = TaxOneDataDetail.Rows[0]["SaleType"];
+                    SaleType = ValSaleType == DBNull.Value ? "" : Convert.ToString(ValSaleType);
+
+                }
+
+                string TaxTwoRate = "0";
+
+                if (taxTwoDataDetail.Rows.Count > 0)
+                {
+                    var value = taxTwoDataDetail.Rows[0]["ratE_DESC"];
+                    TaxTwoRate = value == DBNull.Value ? "0" : Convert.ToString(value);
+                    var SROSchedule = taxTwoDataDetail.Rows[0]["SRO_Desc"];
+                    SROScheduleNo = SROSchedule == DBNull.Value ? "" : Convert.ToString(SROSchedule);
+                    var sroItemSerial = taxTwoDataDetail.Rows[0]["SroItemSerNo"];
+                    sroSerialNo = sroItemSerial == DBNull.Value ? "" : Convert.ToString(sroItemSerial);
+                    var ScenarioIDFbr = taxTwoDataDetail.Rows[0]["FbrScenerioID"];
+                    fbrObj.scenarioId = ScenarioIDFbr == DBNull.Value ? "SN001" : Convert.ToString(ScenarioIDFbr);
+                    var ValSaleType = TaxOneDataDetail.Rows[0]["SaleType"];
+                    SaleType = ValSaleType == DBNull.Value ? "" : Convert.ToString(ValSaleType);
+
+                }
+
+                DataTable dtItemDetails = GStatic.ReturnDT(@" SELECT InventItems.HSCode,inventCategory.CHSCode,inventCategory.CSROCode,
+InventUom.FBR_UomCodes,InventUom.UOMName,
+Isnull(Fbr_SaleTypesCodesList.[Description],'') AS FbrSaleType,CartonSize,ItemId,ItenName,
+InventUom.FBR_Descrption
+ FROM InventItems
+INNER JOIN inventcategory ON inventCategory.CategoryID = InventItems.CategoryID
+INNER JOIN InventUom ON InventUOM.UOMId = InventItems.UOMId
+LEFT JOIN dbo.Fbr_SaleTypesCodesList ON Fbr_SaleTypesCodesList.SaleTypeID = InventCategory.FbrSaleTypeID
+where InventItems.itemID=
+ " + ItemID);
+
+                var CHScode = Convert.ToString(dtItemDetails.Rows[0]["CHSCode"]);
+                var HSCode = Convert.ToString(dtItemDetails.Rows[0]["HSCode"]);
+                if (string.IsNullOrEmpty(HSCode))
+                {
+                    HSCode = CHScode;
+
+                }
+
+                decimal CartonQuantity = 0;
+                var fixedNotifiedValueOrRetailPrice = Math.Round(Convert.ToDecimal(dtDetail.Rows[i]["ItemRate"]), 2, MidpointRounding.AwayFromZero);
+                var FbruoM = Convert.ToString(dtItemDetails.Rows[0]["FBR_UomCodes"]);
+                if (IsInvoicesInPieces)
+                {
+                    CartonQuantity = Convert.ToDecimal(dtDetail.Rows[i]["Quantity"]);
+                    var TaxDivisonFactor = Convert.ToDecimal(TaxRateOneValue) / 100;
+                    fixedNotifiedValueOrRetailPrice = Convert.ToDecimal(dtDetail.Rows[i]["TaxOneAmount"]) / Convert.ToDecimal(TaxDivisonFactor);
+                    fixedNotifiedValueOrRetailPrice = Math.Round((fixedNotifiedValueOrRetailPrice / CartonQuantity), 2);
+                    FbruoM = Convert.ToString(dtItemDetails.Rows[0]["FBR_Descrption"]);
+                }
+                else
+                {
+                    CartonQuantity = Convert.ToDecimal(dtDetail.Rows[i]["Quantity"]) / Convert.ToDecimal(dtItemDetails.Rows[0]["CartonSize"]);
+                }
+                var GrossAmountIncludingDiscounts = Convert.ToDecimal(dtDetail.Rows[i]["NetAmount"]) - Convert.ToDecimal(dtDetail.Rows[i]["TaxOneAmount"]) - Convert.ToDecimal(dtDetail.Rows[i]["TaxTwoAmount"]);
+
+                if (IstaxExcludingDiscount)
+                {
+                    GrossAmountIncludingDiscounts += Convert.ToDecimal(dtDetail.Rows[i]["RTNetDiscount"]);
+                }
+                Fbr_DigitalInvoicingDetail objItem = new Fbr_DigitalInvoicingDetail();
+                objItem.hsCode = HSCode;
+                objItem.productDescription = Convert.ToString(dtItemDetails.Rows[0]["ItenName"]) + " " + DetailRemarks;
+                objItem.rate = Convert.ToString(TaxOneRate);
+                objItem.uoM = FbruoM;
+                objItem.quantity = Math.Round(CartonQuantity, 2);
+                objItem.totalValues = Math.Round(Convert.ToDecimal(dtDetail.Rows[i]["NetAmount"]), 2);
+                objItem.valueSalesExcludingST = Convert.ToString(Math.Round(GrossAmountIncludingDiscounts, 2));
+                decimal tax = dtDetail.Rows[i]["TaxOneAmount"] is DBNull
+     ? 0.00m
+     : Convert.ToDecimal(dtDetail.Rows[i]["TaxOneAmount"]);
+                tax = Math.Round(tax, 2, MidpointRounding.AwayFromZero);
+
+                objItem.salesTaxApplicable = tax.ToString("0.00");
+
+                objItem.fixedNotifiedValueOrRetailPrice = fixedNotifiedValueOrRetailPrice;
+                objItem.salesTaxWithheldAtSource = 0;
+                var ExtrataxValue = dtDetail.Rows[i]["TaxTwoAmount"];
+                objItem.extraTax = (ExtrataxValue == DBNull.Value || Convert.ToDecimal(ExtrataxValue) == 0) ? "" : ((decimal)dtDetail.Rows[i]["TaxTwoAmount"]).ToString("F2");
+                objItem.furtherTax = 0;
+                objItem.sroScheduleNo = SROScheduleNo;
+                objItem.fedPayable = 0;
+
+                objItem.discount = Math.Round((Convert.ToDecimal(dtDetail.Rows[i]["RTNetDiscount"])), 2);
+                objItem.saleType = SaleType;
+                objItem.sroItemSerialNo = sroSerialNo;
+                lst.Add(objItem);
+            }
+            return lst;
+        }
+        public ApiResponse SendModelToApi(Fbr_DigitalInvoicing objInvoice, string token, bool isSandBox = false)
+        {
+            using (var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }))
+            {
+                // Configure headers to match FBR portal
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Postman.Now/1.0"); // Match Postman-like behavior
+                client.Timeout = TimeSpan.FromSeconds(30);
+
+                // Serialize payload
+                string jsonPayload = JsonConvert.SerializeObject(objInvoice, Formatting.Indented);
+                Console.WriteLine("📤 Serialized JSON Payload:");
+                Console.WriteLine(jsonPayload);
+
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                // Configure SSL/TLS
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; // Include Tls13
+                                                                                                                // For dev only: bypass SSL/TLS validation (remove in production)
+                ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+
+                HttpResponseMessage response = null;
+                string result = string.Empty;
+
+                try
+                {
+                    // Send request
+
+                    if (isSandBox)
+                    {
+                        response = client.PostAsync("https://gw.fbr.gov.pk/di_data/v1/di/postinvoicedata", content).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        response = client.PostAsync("https://gw.fbr.gov.pk/di_data/v1/di/postinvoicedata_sb", content).GetAwaiter().GetResult();
+                    }
+                    Console.WriteLine($"✅ HTTP Status: {response.StatusCode}");
+                    Console.WriteLine($"📋 Content-Length: {response.Content.Headers.ContentLength ?? -1}");
+
+                    // Log headers
+                    Console.WriteLine("📋 Response Headers:");
+                    foreach (var header in response.Headers)
+                    {
+                        Console.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
+                    }
+
+                    // Check status code
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        Console.WriteLine($"❌ Error Response: {result}");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "98",
+                                status = "Failed",
+                                error = $"HTTP request failed with status: {response.StatusCode}, Response: {result}"
+                            }
+                        };
+                    }
+
+                    // Buffer response content
+                    response.Content.LoadIntoBufferAsync().GetAwaiter().GetResult();
+
+                    // Read response content
+                    result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    Console.WriteLine("📥 Raw Response:");
+                    Console.WriteLine("-----------------------------------");
+                    Console.WriteLine(result);
+
+                    // Fallback: Read stream directly if empty
+                    if (string.IsNullOrWhiteSpace(result))
+                    {
+                        Console.WriteLine("⚠️ Empty response from ReadAsStringAsync, trying fallback stream read");
+                        using (var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
+                        using (var reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                            Console.WriteLine("📥 Fallback Stream Response:");
+                            Console.WriteLine(result);
+                        }
+                    }
+
+                    // Check for empty response
+                    if (string.IsNullOrWhiteSpace(result))
+                    {
+                        Console.WriteLine("❌ Empty response received");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "99",
+                                status = "Failed",
+                                error = "API returned an empty response despite successful request"
+                            }
+                        };
+                    }
+
+                    // Check for non-JSON response
+                    if (!result.TrimStart().StartsWith("{") && !result.TrimStart().StartsWith("["))
+                    {
+                        Console.WriteLine("❌ Non-JSON response received:");
+                        Console.WriteLine(result);
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "96",
+                                status = "Failed",
+                                error = "Non-JSON response received from FBR API"
+                            }
+                        };
+                    }
+
+                    // Deserialize response
+                    var settings = new JsonSerializerSettings
+                    {
+                        MissingMemberHandling = MissingMemberHandling.Ignore,
+                        NullValueHandling = NullValueHandling.Include,
+                        ContractResolver = new DefaultContractResolver
+                        {
+                            NamingStrategy = new CamelCaseNamingStrategy()
+                        },
+                        Error = (sender, args) =>
+                        {
+                            Console.WriteLine($"⚠️ JSON Warning: {args.ErrorContext.Error.Message}");
+                            args.ErrorContext.Handled = true;
+                        }
+                    };
+
+                    var apiResponse = JsonConvert.DeserializeObject<ApiResponse>(result, settings);
+                    if (apiResponse == null)
+                    {
+                        Console.WriteLine("❌ Deserialization returned null");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "94",
+                                status = "Failed",
+                                error = "Deserialization returned null API response"
+                            }
+                        };
+                    }
+
+                    if (apiResponse.validationResponse == null)
+                    {
+                        Console.WriteLine("❌ validationResponse is missing");
+                        apiResponse.validationResponse = new ValidationResponse
+                        {
+                            statusCode = "94",
+                            status = "Failed",
+                            error = "validationResponse is missing in the API response"
+                        };
+                    }
+
+                    var vr = apiResponse.validationResponse;
+
+                    if (vr.statusCode == "00")
+                    {
+                        Console.WriteLine("✅ Invoice posted successfully.");
+                        Console.WriteLine($"🧾 Invoice Number: {apiResponse.invoiceNumber}");
+                        foreach (var item in vr.invoiceStatuses ?? new List<InvoiceStatus>())
+                        {
+                            Console.WriteLine($"  - Item {item.itemSNo}: Status={item.status}, InvoiceNo={item.invoiceNo}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("❌ Invoice validation failed.");
+                        if (!string.IsNullOrEmpty(vr.error))
+                            Console.WriteLine($"Top-Level Error: {vr.error}");
+                        foreach (var item in vr.invoiceStatuses ?? new List<InvoiceStatus>())
+                        {
+                            Console.WriteLine($"  - Item {item.itemSNo}: Error={item.error}, Code={item.errorCode}");
+                        }
+                    }
+
+                    return apiResponse;
+                }
+                catch (HttpRequestException ex)
+                {
+                    Console.WriteLine($"❌ HTTP POST failed: {ex.Message}");
+                    return new ApiResponse
+                    {
+                        validationResponse = new ValidationResponse
+                        {
+                            statusCode = "98",
+                            status = "Failed",
+                            error = $"HTTP POST exception: {ex.Message}"
+                        }
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Unexpected error: {ex.Message}");
+                    return new ApiResponse
+                    {
+                        validationResponse = new ValidationResponse
+                        {
+                            statusCode = "97",
+                            status = "Failed",
+                            error = $"Unexpected error: {ex.Message}"
+                        }
+                    };
+                }
+                finally
+                {
+                    response?.Dispose();
+                }
+            }
+        }
+
+
+        public ApiResponse ValidateInvoice(Fbr_DigitalInvoicing objInvoice, string token)
+        {
+            using (var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }))
+            {
+                // Configure headers to match FBR portal
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Postman.Now/1.0"); // Match Postman-like behavior
+                client.Timeout = TimeSpan.FromSeconds(30);
+
+                // Serialize payload
+                string jsonPayload = JsonConvert.SerializeObject(objInvoice, Formatting.Indented);
+                Console.WriteLine("📤 Serialized JSON Payload:");
+                Console.WriteLine(jsonPayload);
+
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                // Configure SSL/TLS
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; // Include Tls13
+                                                                                   // For dev only: bypass SSL/TLS validation (remove in production)
+                ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+
+                HttpResponseMessage response = null;
+                string result = string.Empty;
+
+                try
+                {
+                    // Send request
+                    response = client.PostAsync("https://gw.fbr.gov.pk/di_data/v1/di/validateinvoicedata_sb", content).GetAwaiter().GetResult();
+                    Console.WriteLine($"✅ HTTP Status: {response.StatusCode}");
+                    Console.WriteLine($"📋 Content-Length: {response.Content.Headers.ContentLength ?? -1}");
+
+                    // Log headers
+                    Console.WriteLine("📋 Response Headers:");
+                    foreach (var header in response.Headers)
+                    {
+                        Console.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
+                    }
+
+                    // Check status code
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        Console.WriteLine($"❌ Error Response: {result}");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "98",
+                                status = "Failed",
+                                error = $"HTTP request failed with status: {response.StatusCode}, Response: {result}"
+                            }
+                        };
+                    }
+
+                    // Buffer response content
+                    response.Content.LoadIntoBufferAsync().GetAwaiter().GetResult();
+
+                    // Read response content
+                    result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    Console.WriteLine("📥 Raw Response:");
+                    Console.WriteLine("-----------------------------------");
+                    Console.WriteLine(result);
+
+                    // Fallback: Read stream directly if empty
+                    if (string.IsNullOrWhiteSpace(result))
+                    {
+                        Console.WriteLine("⚠️ Empty response from ReadAsStringAsync, trying fallback stream read");
+                        using (var stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
+                        using (var reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                            Console.WriteLine("📥 Fallback Stream Response:");
+                            Console.WriteLine(result);
+                        }
+                    }
+
+                    // Check for empty response
+                    if (string.IsNullOrWhiteSpace(result))
+                    {
+                        Console.WriteLine("❌ Empty response received");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "99",
+                                status = "Failed",
+                                error = "API returned an empty response despite successful request"
+                            }
+                        };
+                    }
+
+                    // Check for non-JSON response
+                    if (!result.TrimStart().StartsWith("{") && !result.TrimStart().StartsWith("["))
+                    {
+                        Console.WriteLine("❌ Non-JSON response received:");
+                        Console.WriteLine(result);
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "96",
+                                status = "Failed",
+                                error = "Non-JSON response received from FBR API"
+                            }
+                        };
+                    }
+
+                    // Deserialize response
+                    var settings = new JsonSerializerSettings
+                    {
+                        MissingMemberHandling = MissingMemberHandling.Ignore,
+                        NullValueHandling = NullValueHandling.Include,
+                        ContractResolver = new DefaultContractResolver
+                        {
+                            NamingStrategy = new CamelCaseNamingStrategy()
+                        },
+                        Error = (sender, args) =>
+                        {
+                            Console.WriteLine($"⚠️ JSON Warning: {args.ErrorContext.Error.Message}");
+                            args.ErrorContext.Handled = true;
+                        }
+                    };
+
+                    var apiResponse = JsonConvert.DeserializeObject<ApiResponse>(result, settings);
+                    if (apiResponse == null)
+                    {
+                        Console.WriteLine("❌ Deserialization returned null");
+                        return new ApiResponse
+                        {
+                            validationResponse = new ValidationResponse
+                            {
+                                statusCode = "94",
+                                status = "Failed",
+                                error = "Deserialization returned null API response"
+                            }
+                        };
+                    }
+
+                    if (apiResponse.validationResponse == null)
+                    {
+                        Console.WriteLine("❌ validationResponse is missing");
+                        apiResponse.validationResponse = new ValidationResponse
+                        {
+                            statusCode = "94",
+                            status = "Failed",
+                            error = "validationResponse is missing in the API response"
+                        };
+                    }
+
+                    var vr = apiResponse.validationResponse;
+
+                    if (vr.statusCode == "00")
+                    {
+                        Console.WriteLine("✅ Invoice posted successfully.");
+                        Console.WriteLine($"🧾 Invoice Number: {apiResponse.invoiceNumber}");
+                        foreach (var item in vr.invoiceStatuses ?? new List<InvoiceStatus>())
+                        {
+                            Console.WriteLine($"  - Item {item.itemSNo}: Status={item.status}, InvoiceNo={item.invoiceNo}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("❌ Invoice validation failed.");
+                        if (!string.IsNullOrEmpty(vr.error))
+                            Console.WriteLine($"Top-Level Error: {vr.error}");
+                        foreach (var item in vr.invoiceStatuses ?? new List<InvoiceStatus>())
+                        {
+                            Console.WriteLine($"  - Item {item.itemSNo}: Error={item.error}, Code={item.errorCode}");
+                        }
+                    }
+
+                    return apiResponse;
+                }
+                catch (HttpRequestException ex)
+                {
+                    Console.WriteLine($"❌ HTTP POST failed: {ex.Message}");
+                    return new ApiResponse
+                    {
+                        validationResponse = new ValidationResponse
+                        {
+                            statusCode = "98",
+                            status = "Failed",
+                            error = $"HTTP POST exception: {ex.Message}"
+                        }
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Unexpected error: {ex.Message}");
+                    return new ApiResponse
+                    {
+                        validationResponse = new ValidationResponse
+                        {
+                            statusCode = "97",
+                            status = "Failed",
+                            error = $"Unexpected error: {ex.Message}"
+                        }
+                    };
+                }
+                finally
+                {
+                    response?.Dispose();
+                }
+            }
+        }
+
+        //public bool InsertFbrObject(Fbr_DigitalInvoicing a)
+        //{
+
+
+        //    DataTable dt = new DataTable();
+        //    var connectionString = GStatic.Connection();
+        //    SqlConnection con = new SqlConnection(connectionString);
+        //    SqlTransaction tran;
+        //    con.Open();
+        //    tran = con.BeginTransaction();
+        //    SqlCommand cmd = new SqlCommand("Fbr_DigitalInvoicing_Insert", con);
+        //    cmd.CommandType = CommandType.StoredProcedure;
+        //    SqlDataAdapter da = new SqlDataAdapter();
+        //    SqlParameter p = new SqlParameter("@MasterID", a.MasterID);
+        //    p.Direction = ParameterDirection.InputOutput; cmd.Parameters.Add(p);
+
+
+
+        //    cmd.Parameters.Add(new SqlParameter("@bposId", a.bposId));
+        //    cmd.Parameters.Add(new SqlParameter("@invoiceType", a.invoiceType));
+        //    cmd.Parameters.Add(new SqlParameter("@invoiceDate", a.invoiceDate));
+        //    cmd.Parameters.Add(new SqlParameter("@ntN_CNIC", a.ntN_CNIC));
+        //    cmd.Parameters.Add(new SqlParameter("@buyerSellerName", a.buyerSellerName));
+        //    cmd.Parameters.Add(new SqlParameter("@destinationAddress", a.destinationAddress));
+        //    cmd.Parameters.Add(new SqlParameter("@saleType", a.saleType));
+        //    cmd.Parameters.Add(new SqlParameter("@totalSalesTaxApplicable", a.totalSalesTaxApplicable));
+        //    cmd.Parameters.Add(new SqlParameter("@totalRetailPrice", a.totalRetailPrice));
+        //    cmd.Parameters.Add(new SqlParameter("@totalSTWithheldAtSource", a.totalSTWithheldAtSource));
+        //    cmd.Parameters.Add(new SqlParameter("@totalExtraTax", a.totalExtraTax));
+        //    cmd.Parameters.Add(new SqlParameter("@totalFEDPayable", a.totalFEDPayable));
+        //    cmd.Parameters.Add(new SqlParameter("@totalWithheldIncomeTax", a.totalWithheldIncomeTax));
+        //    cmd.Parameters.Add(new SqlParameter("@totalCVT", a.totalCVT));
+        //    cmd.Parameters.Add(new SqlParameter("@distributor_NTN_CNIC", a.distributor_NTN_CNIC));
+        //    cmd.Parameters.Add(new SqlParameter("@distributorName", a.distributorName));
+        //    cmd.Parameters.Add(new SqlParameter("@FbrInvoiceNumber", a.FbrInvoiceNumber));
+
+        //    cmd.Parameters.Add(new SqlParameter("@Fbr_DigitalInvoicingDetail", a.ToDataTable<Fbr_DigitalInvoicingDetail>(a.Items)));
+
+
+
+        //    da.SelectCommand = cmd;
+        //    try
+        //    {
+        //        cmd.Transaction = tran; da.Fill(dt); 
+        //        tran.Commit();
+        //        a.MasterID = Convert.ToInt32(p.Value.ToString());
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        tran.Rollback();
+        //        a.ErrorMsg = ex.Message;
+        //        return false;
+        //    }
+        //    finally
+        //    {
+        //        con.Close();
+        //    }
+
+        //    return true;
+
+        //}
+        public DataTable ToDataTable<T>(List<T> items)
+        {
+            DataTable dataTable = new DataTable(typeof(T).Name);
+            //Get all the properties
+            PropertyInfo[] Props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (PropertyInfo prop in Props)
+            {
+                //Setting column names as Property names
+                dataTable.Columns.Add(prop.Name);
+            }
+            foreach (T item in items)
+            {
+                var values = new object[Props.Length];
+                for (int i = 0; i < Props.Length; i++)
+                {
+                    //inserting property values to datatable rows
+                    values[i] = Props[i].GetValue(item, null);
+                }
+                dataTable.Rows.Add(values);
+            }
+            //put a breakpoint here and check datatable
+            return dataTable;
+        }
+
+        public string GenerateQRCode(Fbr_DigitalInvoicing a, string ImageP, string QrImage)
+        {
+            //string folderPath = "~/QrImages/";
+            string imagePath = Convert.ToString(a.invoiceRefNo) + ".jpg";
+
+
+            var barcodeWriter = new BarcodeWriter();
+            barcodeWriter.Format = BarcodeFormat.QR_CODE;
+            var result = barcodeWriter.Write(a.invoiceRefNo);
+            string barcodePath = Path.Combine(ImageP, imagePath);
+            string barcodePathServer = Path.Combine(QrImage, imagePath);
+
+            var barcodeBitmap = new Bitmap(result);
+            using (MemoryStream memory = new MemoryStream())
+            {
+                using (FileStream fs = new FileStream(barcodePath, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    barcodeBitmap.Save(memory, ImageFormat.Jpeg);
+                    byte[] bytes = memory.ToArray();
+                    fs.Write(bytes, 0, bytes.Length);
+                }
+            }
+            return barcodePath;
+        }
+
+    }
+    public class Fbr_DigitalInvoicingDetail
+    {
+        public string hsCode { get; set; }                          // e.g., "0000.0000"
+        public string productDescription { get; set; }
+        public string rate { get; set; }                           //this is Tax Rate Percentage Not Retail Rate
+        public string uoM { get; set; }                             // Unit of Measurement
+        public decimal quantity { get; set; }
+        public decimal totalValues { get; set; }                    //This is Invoice Total Value Including Tax
+        public string valueSalesExcludingST { get; set; }           // Note: string in JSON
+        public string salesTaxApplicable { get; set; }              // Note: string in JSON
+        public decimal fixedNotifiedValueOrRetailPrice { get; set; }
+        public decimal salesTaxWithheldAtSource { get; set; }
+        public string extraTax { get; set; }
+        public decimal furtherTax { get; set; }
+        public string sroScheduleNo { get; set; }
+        public decimal fedPayable { get; set; }
+        public decimal discount { get; set; }
+        public string saleType { get; set; }     //Sale Type Must Be matched with Selected Tax % i.e (Services) has 16% Tax
+        public string sroItemSerialNo { get; set; }
+    }
+
+    public class ApiResponse
+    {
+        public string invoiceNumber { get; set; }
+        public string dated { get; set; }
+        public ValidationResponse validationResponse { get; set; }
+        public string ErrorMessage { get; set; }
+    }
+
+    public class ValidationResponse
+    {
+        public string statusCode { get; set; }
+        public string status { get; set; }
+        public string error { get; set; }
+        public List<InvoiceStatus> invoiceStatuses { get; set; }
+}
+
+public class InvoiceStatus
+{
+    public string itemSNo { get; set; }
+    public string statusCode { get; set; }
+    public string status { get; set; }
+    public string invoiceNo { get; set; }
+    public string errorCode { get; set; }
+    public string error { get; set; }
+}
+
+
+}
