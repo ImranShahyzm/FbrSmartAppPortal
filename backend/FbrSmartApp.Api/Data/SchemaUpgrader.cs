@@ -787,6 +787,621 @@ public static class SchemaUpgrader
             """,
             ct
         );
+
+        // Users: module access rights JSON (accounting, etc.)
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL
+                AND COL_LENGTH('dbo.Users', 'AccessRightsJson') IS NULL
+                ALTER TABLE dbo.Users ADD AccessRightsJson NVARCHAR(MAX) NULL;
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL
+                AND COL_LENGTH('dbo.Users', 'PermissionsJson') IS NULL
+                ALTER TABLE dbo.Users ADD PermissionsJson NVARCHAR(MAX) NULL;
+            """,
+            ct
+        );
+
+        // RBAC: security groups and assignments
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.SecurityGroups', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.SecurityGroups(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_SecurityGroups PRIMARY KEY,
+                    CompanyId INT NOT NULL,
+                    Name NVARCHAR(200) NOT NULL,
+                    ApplicationScope NVARCHAR(120) NULL,
+                    ShareGroup BIT NOT NULL CONSTRAINT DF_SecurityGroups_ShareGroup DEFAULT ((0)),
+                    ApiKeysMaxDurationDays DECIMAL(18,2) NULL,
+                    Notes NVARCHAR(MAX) NULL,
+                    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_SecurityGroups_Created DEFAULT (SYSUTCDATETIME())
+                );
+                CREATE INDEX IX_SecurityGroups_Company_Name ON dbo.SecurityGroups(CompanyId, Name);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.UserSecurityGroups', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.UserSecurityGroups(
+                    UserId UNIQUEIDENTIFIER NOT NULL,
+                    SecurityGroupId INT NOT NULL,
+                    CONSTRAINT PK_UserSecurityGroups PRIMARY KEY (UserId, SecurityGroupId),
+                    CONSTRAINT FK_UserSecurityGroups_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(Id) ON DELETE CASCADE,
+                    CONSTRAINT FK_UserSecurityGroups_SecurityGroups FOREIGN KEY (SecurityGroupId) REFERENCES dbo.SecurityGroups(Id) ON DELETE CASCADE
+                );
+                CREATE INDEX IX_UserSecurityGroups_Group ON dbo.UserSecurityGroups(SecurityGroupId);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GroupAccessRights', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GroupAccessRights(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GroupAccessRights PRIMARY KEY,
+                    SecurityGroupId INT NOT NULL,
+                    DisplayName NVARCHAR(300) NOT NULL,
+                    PermissionsPrefix NVARCHAR(64) NOT NULL,
+                    ModelKey NVARCHAR(120) NOT NULL,
+                    CanRead BIT NOT NULL CONSTRAINT DF_GAR_Read DEFAULT ((0)),
+                    CanWrite BIT NOT NULL CONSTRAINT DF_GAR_Write DEFAULT ((0)),
+                    CanCreate BIT NOT NULL CONSTRAINT DF_GAR_Create DEFAULT ((0)),
+                    CanDelete BIT NOT NULL CONSTRAINT DF_GAR_Delete DEFAULT ((0)),
+                    CONSTRAINT FK_GroupAccessRights_SecurityGroups FOREIGN KEY (SecurityGroupId) REFERENCES dbo.SecurityGroups(Id) ON DELETE CASCADE
+                );
+                CREATE INDEX IX_GroupAccessRights_Group ON dbo.GroupAccessRights(SecurityGroupId);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GroupRecordRules', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GroupRecordRules(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GroupRecordRules PRIMARY KEY,
+                    SecurityGroupId INT NOT NULL,
+                    Name NVARCHAR(300) NOT NULL,
+                    PermissionsPrefix NVARCHAR(64) NOT NULL,
+                    ModelKey NVARCHAR(120) NOT NULL,
+                    Domain NVARCHAR(MAX) NULL,
+                    ApplyRead BIT NOT NULL CONSTRAINT DF_GRR_Read DEFAULT ((1)),
+                    ApplyWrite BIT NOT NULL CONSTRAINT DF_GRR_Write DEFAULT ((0)),
+                    ApplyCreate BIT NOT NULL CONSTRAINT DF_GRR_Create DEFAULT ((0)),
+                    ApplyDelete BIT NOT NULL CONSTRAINT DF_GRR_Delete DEFAULT ((0)),
+                    CONSTRAINT FK_GroupRecordRules_SecurityGroups FOREIGN KEY (SecurityGroupId) REFERENCES dbo.SecurityGroups(Id) ON DELETE CASCADE
+                );
+                CREATE INDEX IX_GroupRecordRules_Group ON dbo.GroupRecordRules(SecurityGroupId);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF COL_LENGTH('dbo.GroupRecordRules', 'FieldName') IS NULL
+                ALTER TABLE dbo.GroupRecordRules ADD FieldName NVARCHAR(120) NULL;
+            IF COL_LENGTH('dbo.GroupRecordRules', 'Operator') IS NULL
+                ALTER TABLE dbo.GroupRecordRules ADD Operator NVARCHAR(16) NULL;
+            IF COL_LENGTH('dbo.GroupRecordRules', 'RightOperandJson') IS NULL
+                ALTER TABLE dbo.GroupRecordRules ADD RightOperandJson NVARCHAR(MAX) NULL;
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GroupMenuGrants', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GroupMenuGrants(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GroupMenuGrants PRIMARY KEY,
+                    SecurityGroupId INT NOT NULL,
+                    MenuKey NVARCHAR(200) NOT NULL,
+                    Visible BIT NOT NULL CONSTRAINT DF_GMG_Visible DEFAULT ((1)),
+                    CONSTRAINT FK_GroupMenuGrants_SecurityGroups FOREIGN KEY (SecurityGroupId) REFERENCES dbo.SecurityGroups(Id) ON DELETE CASCADE,
+                    CONSTRAINT UX_GroupMenuGrants_Group_Key UNIQUE (SecurityGroupId, MenuKey)
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.SecurityGroupInheritances', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.SecurityGroupInheritances(
+                    SecurityGroupId INT NOT NULL,
+                    ParentSecurityGroupId INT NOT NULL,
+                    CONSTRAINT PK_SecurityGroupInheritances PRIMARY KEY (SecurityGroupId, ParentSecurityGroupId),
+                    CONSTRAINT FK_SGI_Child FOREIGN KEY (SecurityGroupId) REFERENCES dbo.SecurityGroups(Id) ON DELETE CASCADE,
+                    CONSTRAINT FK_SGI_Parent FOREIGN KEY (ParentSecurityGroupId) REFERENCES dbo.SecurityGroups(Id)
+                );
+            END
+            """,
+            ct
+        );
+
+        // Branches (per company); no legacy GLUser foreign keys
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_BranchInfo', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_BranchInfo(
+                    BranchID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_BranchInfo PRIMARY KEY,
+                    EntryUserID INT NULL,
+                    EntryUserDateTime DATETIME NULL,
+                    ModifyUserID INT NULL,
+                    ModifyUserDateTime DATETIME NULL,
+                    CompanyID INT NULL,
+                    BranchName NVARCHAR(100) NULL,
+                    BranchCode NVARCHAR(50) NULL,
+                    BranchNumber NVARCHAR(50) NULL,
+                    BranchEmail NVARCHAR(50) NULL,
+                    BranchAddress NVARCHAR(200) NULL,
+                    BranchDescription NVARCHAR(500) NULL
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_BranchInfo', 'U') IS NOT NULL
+              AND OBJECT_ID('dbo.GLCompany', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_gen_BranchInfo_GLCompany'
+                    AND parent_object_id = OBJECT_ID(N'dbo.gen_BranchInfo'))
+            BEGIN
+                ALTER TABLE dbo.gen_BranchInfo ADD CONSTRAINT FK_gen_BranchInfo_GLCompany
+                    FOREIGN KEY (CompanyID) REFERENCES dbo.GLCompany(Companyid);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GLChartOFAccount(
+                    GLCAID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GLChartOFAccount PRIMARY KEY,
+                    GLCode NVARCHAR(500) NULL,
+                    GLTitle NVARCHAR(500) NULL,
+                    GLType INT NULL,
+                    isParent INT NULL,
+                    GLNature TINYINT NULL,
+                    Fiscalid INT NULL,
+                    GLBSid INT NULL,
+                    GLPLid INT NULL,
+                    Companyid INT NULL,
+                    Status BIT NOT NULL CONSTRAINT DF_GLChartOFAccount_Status DEFAULT ((0)),
+                    EntryBy VARCHAR(50) NULL,
+                    UserID INT NULL,
+                    AccountLevelOne VARCHAR(10) NOT NULL CONSTRAINT DF_GLChartOFAccount_AccountLevelOne DEFAULT (N''),
+                    AccountLevelTwo VARCHAR(10) NULL,
+                    AccountlevelThree VARCHAR(10) NULL,
+                    AccountLevelFour VARCHAR(10) NULL,
+                    AccountLevelFive VARCHAR(10) NULL,
+                    AccountLevelSix VARCHAR(10) NULL,
+                    AccountLevelSeven VARCHAR(10) NULL,
+                    AccountLevelEight VARCHAR(10) NULL,
+                    AccountLevelNine VARCHAR(10) NULL,
+                    AccountLevelTen VARCHAR(10) NULL,
+                    GLLevel TINYINT NULL,
+                    ReadOnly BIT NOT NULL CONSTRAINT DF_GLChartOFAccount_ReadOnly DEFAULT ((0)),
+                    OLDGLCODE NVARCHAR(250) NULL,
+                    AllowReconciliation BIT NOT NULL CONSTRAINT DF_GLChartOFAccount_AllowReconciliation DEFAULT ((0))
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NOT NULL
+                AND COL_LENGTH('dbo.GLChartOFAccount', 'AllowReconciliation') IS NULL
+                ALTER TABLE dbo.GLChartOFAccount ADD AllowReconciliation BIT NOT NULL
+                    CONSTRAINT DF_GLChartOFAccount_AllowReconciliation2 DEFAULT ((0));
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NOT NULL
+                AND COL_LENGTH('dbo.GLChartOFAccount', 'AccountCurrency') IS NULL
+                ALTER TABLE dbo.GLChartOFAccount ADD AccountCurrency NVARCHAR(10) NULL;
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NOT NULL
+                AND COL_LENGTH('dbo.GLChartOFAccount', 'ChartAccountGroupKey') IS NULL
+                ALTER TABLE dbo.GLChartOFAccount ADD ChartAccountGroupKey NVARCHAR(36) NULL;
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLAccontType', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GLAccontType(
+                    AccountTypeID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GLAccontType PRIMARY KEY,
+                    Title VARCHAR(100) NULL,
+                    MainParent INT NULL,
+                    ReportingHead NVARCHAR(500) NULL,
+                    OrderBy TINYINT NULL
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NOT NULL
+              AND OBJECT_ID('dbo.GLCompany', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_GLChartOFAccount_GLCompany'
+                    AND parent_object_id = OBJECT_ID(N'dbo.GLChartOFAccount'))
+            BEGIN
+                ALTER TABLE dbo.GLChartOFAccount ADD CONSTRAINT FK_GLChartOFAccount_GLCompany
+                    FOREIGN KEY (Companyid) REFERENCES dbo.GLCompany(Companyid);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOfAccountBranchDetail', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GLChartOfAccountBranchDetail(
+                    GLCABranchDetailID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GLChartOfAccountBranchDetail PRIMARY KEY,
+                    GLCAID INT NULL,
+                    BranchID INT NULL
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOfAccountBranchDetail', 'U') IS NOT NULL
+              AND OBJECT_ID('dbo.gen_BranchInfo', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_GLChartOfAccountBranchDetail_gen_BranchInfo'
+                    AND parent_object_id = OBJECT_ID(N'dbo.GLChartOfAccountBranchDetail'))
+            BEGIN
+                ALTER TABLE dbo.GLChartOfAccountBranchDetail ADD CONSTRAINT FK_GLChartOfAccountBranchDetail_gen_BranchInfo
+                    FOREIGN KEY (BranchID) REFERENCES dbo.gen_BranchInfo(BranchID);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLChartOfAccountBranchDetail', 'U') IS NOT NULL
+              AND OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_GLChartOfAccountBranchDetail_GLChartOFAccount'
+                    AND parent_object_id = OBJECT_ID(N'dbo.GLChartOfAccountBranchDetail'))
+            BEGIN
+                ALTER TABLE dbo.GLChartOfAccountBranchDetail ADD CONSTRAINT FK_GLChartOfAccountBranchDetail_GLChartOFAccount
+                    FOREIGN KEY (GLCAID) REFERENCES dbo.GLChartOFAccount(GLCAID);
+            END
+            """,
+            ct
+        );
+
+        // Users resource moved from FBR to Settings: migrate group access rows to settings.users.* permissions.
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GroupAccessRights', 'U') IS NOT NULL
+            BEGIN
+                UPDATE dbo.GroupAccessRights
+                SET PermissionsPrefix = N'settings',
+                    DisplayName = N'Settings: Users'
+                WHERE PermissionsPrefix = N'fbr' AND ModelKey = N'users';
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.RecordRuleModelFieldSettings', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.RecordRuleModelFieldSettings(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_RecordRuleModelFieldSettings PRIMARY KEY,
+                    PermissionsPrefix NVARCHAR(64) NOT NULL,
+                    ModelKey NVARCHAR(128) NOT NULL,
+                    FieldName NVARCHAR(128) NOT NULL,
+                    IsEnabled BIT NOT NULL CONSTRAINT DF_RecordRuleModelFieldSettings_IsEnabled DEFAULT (1),
+                    CONSTRAINT UQ_RecordRuleModelFieldSettings_ModelField UNIQUE (PermissionsPrefix, ModelKey, FieldName)
+                );
+                CREATE INDEX IX_RecordRuleModelFieldSettings_Model ON dbo.RecordRuleModelFieldSettings(PermissionsPrefix, ModelKey);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.data_RegisterCurrency', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.data_RegisterCurrency(
+                    CurrencyID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_data_RegisterCurrency PRIMARY KEY,
+                    CurrencyName NVARCHAR(150) NOT NULL,
+                    CurrencyShortName NVARCHAR(50) NOT NULL,
+                    CurrencySymbol NVARCHAR(100) NOT NULL,
+                    CurrencyNo INT NOT NULL CONSTRAINT DF_data_RegisterCurrency_CurrencyNo DEFAULT (0),
+                    BaseCurrency BIT NOT NULL CONSTRAINT DF_data_RegisterCurrency_Base DEFAULT (0),
+                    CurrencyStatus BIT NULL,
+                    LogSourceID INT NULL
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.data_RegisterCurrency', 'U') IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM dbo.data_RegisterCurrency WHERE CurrencyShortName = N'PKR')
+            BEGIN
+                INSERT INTO dbo.data_RegisterCurrency (CurrencyName, CurrencyShortName, CurrencySymbol, CurrencyNo, BaseCurrency, CurrencyStatus)
+                VALUES (N'Pakistani Rupee', N'PKR', N'Rs.', 1, 1, 1);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLVoucherType', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GLVoucherType(
+                    Voucherid INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GLVoucherType PRIMARY KEY,
+                    Title NVARCHAR(50) NULL,
+                    Description NVARCHAR(100) NULL,
+                    Companyid INT NULL,
+                    Status BIT NOT NULL CONSTRAINT DF_GLVoucherType_Status DEFAULT (0),
+                    EntryBy NVARCHAR(50) NULL,
+                    UserID INT NULL,
+                    ShowBankAndChequeDate BIT NOT NULL CONSTRAINT DF_GLVoucherType_ShowBankAndChequeDate DEFAULT (0),
+                    SystemType INT NOT NULL CONSTRAINT DF_GLVoucherType_SystemType DEFAULT (0),
+                    ShowToPartyV BIT NOT NULL CONSTRAINT DF_GLVoucherType_ShowToPartyV DEFAULT (0),
+                    InterTransferPolicy BIT NOT NULL CONSTRAINT DF_GLVoucherType_InterTransferPolicy DEFAULT (0),
+                    ShowToAccountBook BIT NOT NULL CONSTRAINT DF_GLVoucherType_ShowToAccountBook DEFAULT (0),
+                    CurrencyID INT NULL,
+                    CONSTRAINT FK_GLVoucherType_GLCompany FOREIGN KEY (Companyid) REFERENCES dbo.GLCompany(Companyid),
+                    CONSTRAINT FK_GLVoucherType_Currency FOREIGN KEY (CurrencyID) REFERENCES dbo.data_RegisterCurrency(CurrencyID)
+                );
+                CREATE INDEX IX_GLVoucherType_Company ON dbo.GLVoucherType(Companyid);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF COL_LENGTH('dbo.GLVoucherType', 'DefaultControlGlAccountId') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD DefaultControlGlAccountId INT NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'ControlAccountTxnNature') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD ControlAccountTxnNature TINYINT NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'DefaultIncomeGlAccountId') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD DefaultIncomeGlAccountId INT NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'SignatureSlotCount') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD SignatureSlotCount TINYINT NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'SignatureName1') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD SignatureName1 NVARCHAR(200) NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'SignatureName2') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD SignatureName2 NVARCHAR(200) NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'SignatureName3') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD SignatureName3 NVARCHAR(200) NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'SignatureName4') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD SignatureName4 NVARCHAR(200) NULL;
+            IF COL_LENGTH('dbo.GLVoucherType', 'DocumentPrefix') IS NULL
+                ALTER TABLE dbo.GLVoucherType ADD DocumentPrefix NVARCHAR(32) NULL;
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.ApprovalStatuses', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.ApprovalStatuses(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ApprovalStatuses PRIMARY KEY,
+                    Code NVARCHAR(32) NOT NULL,
+                    Name NVARCHAR(100) NOT NULL,
+                    SortOrder INT NOT NULL CONSTRAINT DF_ApprovalStatuses_SortOrder DEFAULT (0),
+                    CONSTRAINT UQ_ApprovalStatuses_Code UNIQUE (Code)
+                );
+            END
+            IF NOT EXISTS (SELECT 1 FROM dbo.ApprovalStatuses)
+            BEGIN
+                INSERT INTO dbo.ApprovalStatuses (Code, Name, SortOrder) VALUES
+                (N'draft', N'Draft', 0),
+                (N'approved', N'Approved', 1),
+                (N'confirmed', N'Confirmed', 2),
+                (N'posted', N'Posted', 3),
+                (N'deleted', N'Deleted', 4);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL
+              AND COL_LENGTH('dbo.GLvMAIN', 'ApprovalStatusId') IS NULL
+            BEGIN
+                ALTER TABLE dbo.GLvMAIN ADD ApprovalStatusId INT NULL;
+                ALTER TABLE dbo.GLvMAIN ADD CONSTRAINT FK_GLvMAIN_ApprovalStatuses
+                    FOREIGN KEY (ApprovalStatusId) REFERENCES dbo.ApprovalStatuses(Id);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GLvMAIN(
+                    vID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GLvMAIN PRIMARY KEY,
+                    vType INT NOT NULL,
+                    vNO NVARCHAR(50) NULL,
+                    vDate DATE NOT NULL CONSTRAINT DF_GLvMAIN_vDate DEFAULT (CAST(GETDATE() AS DATE)),
+                    vremarks NVARCHAR(300) NULL,
+                    ManualNo NVARCHAR(50) NULL,
+                    FiscalID INT NULL,
+                    Comp_Id INT NOT NULL,
+                    BranchID INT NULL,
+                    vCancel BIT NOT NULL CONSTRAINT DF_GLvMAIN_vCancel DEFAULT (0),
+                    vPost BIT NOT NULL CONSTRAINT DF_GLvMAIN_vPost DEFAULT (0),
+                    vPostedByUserId UNIQUEIDENTIFIER NULL,
+                    vPostedByDate DATETIME2(7) NULL,
+                    vEnterDate DATETIME2(7) NOT NULL CONSTRAINT DF_GLvMAIN_vEnterDate DEFAULT (SYSUTCDATETIME()),
+                    TotalDr DECIMAL(18, 3) NULL,
+                    TotalCr DECIMAL(18, 3) NULL,
+                    ReadOnly BIT NOT NULL CONSTRAINT DF_GLvMAIN_ReadOnly DEFAULT (0),
+                    ApprovalStatusId INT NULL,
+                    CONSTRAINT FK_GLvMAIN_GLCompany FOREIGN KEY (Comp_Id) REFERENCES dbo.GLCompany(Companyid),
+                    CONSTRAINT FK_GLvMAIN_GLVoucherType FOREIGN KEY (vType) REFERENCES dbo.GLVoucherType(Voucherid),
+                    CONSTRAINT FK_GLvMAIN_ApprovalStatuses_NewDb FOREIGN KEY (ApprovalStatusId) REFERENCES dbo.ApprovalStatuses(Id)
+                );
+                CREATE INDEX IX_GLvMAIN_Company_Date ON dbo.GLvMAIN(Comp_Id, vDate DESC);
+                CREATE INDEX IX_GLvMAIN_Company_Type ON dbo.GLvMAIN(Comp_Id, vType);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL
+              AND COL_LENGTH('dbo.GLvMAIN', 'ApprovalStatusId') IS NOT NULL
+            BEGIN
+                UPDATE m
+                SET m.ApprovalStatusId = p.Id
+                FROM dbo.GLvMAIN m
+                INNER JOIN dbo.ApprovalStatuses p ON p.Code = N'posted'
+                WHERE m.vPost = 1;
+                UPDATE m
+                SET m.ApprovalStatusId = d.Id
+                FROM dbo.GLvMAIN m
+                INNER JOIN dbo.ApprovalStatuses d ON d.Code = N'deleted'
+                WHERE m.vCancel = 1 AND m.vPost = 0;
+                UPDATE m
+                SET m.ApprovalStatusId = dr.Id
+                FROM dbo.GLvMAIN m
+                INNER JOIN dbo.ApprovalStatuses dr ON dr.Code = N'draft'
+                WHERE m.ApprovalStatusId IS NULL;
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_BranchInfo', 'U') IS NOT NULL
+              AND OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_GLvMAIN_gen_BranchInfo'
+                    AND parent_object_id = OBJECT_ID(N'dbo.GLvMAIN'))
+            BEGIN
+                ALTER TABLE dbo.GLvMAIN ADD CONSTRAINT FK_GLvMAIN_gen_BranchInfo
+                    FOREIGN KEY (BranchID) REFERENCES dbo.gen_BranchInfo(BranchID);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GLvDetail(
+                    vDetailID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GLvDetail PRIMARY KEY,
+                    vID INT NOT NULL,
+                    GlAccountID INT NOT NULL,
+                    dr DECIMAL(18, 3) NOT NULL CONSTRAINT DF_GLvDetail_dr DEFAULT (0),
+                    cr DECIMAL(18, 3) NOT NULL CONSTRAINT DF_GLvDetail_cr DEFAULT (0),
+                    Narration NVARCHAR(MAX) NULL,
+                    ShowToParty BIT NOT NULL CONSTRAINT DF_GLvDetail_ShowToParty DEFAULT (0),
+                    PRBookNo INT NOT NULL CONSTRAINT DF_GLvDetail_PRBookNo DEFAULT (0),
+                    CONSTRAINT FK_GLvDetail_GLvMAIN FOREIGN KEY (vID) REFERENCES dbo.GLvMAIN(vID) ON DELETE CASCADE,
+                    CONSTRAINT FK_GLvDetail_GLChartOFAccount FOREIGN KEY (GlAccountID) REFERENCES dbo.GLChartOFAccount(GLCAID)
+                );
+                CREATE INDEX IX_GLvDetail_Voucher ON dbo.GLvDetail(vID);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'TaxAmount') IS NULL
+                ALTER TABLE dbo.GLvDetail ADD TaxAmount DECIMAL(18, 3) NULL;
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'PartnerRef') IS NULL
+                ALTER TABLE dbo.GLvDetail ADD PartnerRef NVARCHAR(200) NULL;
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'FbrSalesTaxRateId') IS NULL
+                ALTER TABLE dbo.GLvDetail ADD FbrSalesTaxRateId INT NULL;
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'PartyID') IS NULL
+                ALTER TABLE dbo.GLvDetail ADD PartyID INT NULL;
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'FbrSalesTaxRateIdsJson') IS NULL
+                ALTER TABLE dbo.GLvDetail ADD FbrSalesTaxRateIdsJson NVARCHAR(500) NULL;
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.AppRecordMessages', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.AppRecordMessages(
+                    Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_AppRecordMessages PRIMARY KEY,
+                    CompanyId INT NOT NULL,
+                    ResourceKey NVARCHAR(64) NOT NULL,
+                    RecordKey NVARCHAR(64) NOT NULL,
+                    Kind TINYINT NOT NULL CONSTRAINT DF_AppRecordMessages_Kind DEFAULT (0),
+                    SystemAction NVARCHAR(32) NULL,
+                    Body NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AppRecordMessages_Body DEFAULT (N''),
+                    AuthorUserId UNIQUEIDENTIFIER NULL,
+                    AuthorDisplayName NVARCHAR(200) NULL,
+                    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_AppRecordMessages_Created DEFAULT (SYSUTCDATETIME()),
+                    AttachmentsJson NVARCHAR(MAX) NULL,
+                    MentionedUserIdsJson NVARCHAR(MAX) NULL
+                );
+                CREATE INDEX IX_AppRecordMessages_Target ON dbo.AppRecordMessages(CompanyId, ResourceKey, RecordKey);
+            END
+            """,
+            ct
+        );
     }
 }
 

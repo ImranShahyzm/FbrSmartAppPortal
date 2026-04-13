@@ -3,10 +3,11 @@ import { Fade, Menu, MenuItem, Button, Avatar, Typography, Box } from '@mui/mate
 import { useGetIdentity, useLogout } from 'react-admin';
 import { useNavigate } from 'react-router-dom';
 import { getInitials } from '../users/UserProfileAvatarInput';
+import { SETTINGS_USERS_LIST_PATH } from '../apps/workspacePaths';
 import { catalogDropdownMenuSlotProps } from './catalogDropdownMenuProps';
 
 /**
- * Top bar: avatar + name opens the same menu style as Catalog; Update profile → `/users/:id`, Logout.
+ * Top bar: avatar + name opens the same menu style as Catalog; Update profile → Settings `/users/:id`, Logout.
  */
 export function ToolbarUserMenu() {
     const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
@@ -14,7 +15,6 @@ export function ToolbarUserMenu() {
     const { identity, isPending } = useGetIdentity();
     const logout = useLogout();
     const navigate = useNavigate();
-
     const name = identity?.fullName?.trim() || 'User';
     const avatarUrl = typeof identity?.avatar === 'string' && identity.avatar ? identity.avatar : undefined;
     const initials = getInitials(identity?.fullName);
@@ -22,7 +22,7 @@ export function ToolbarUserMenu() {
     const goProfile = () => {
         setAnchor(null);
         const id = identity?.id;
-        if (id) navigate(`/users/${encodeURIComponent(String(id))}`);
+        if (id) navigate(`${SETTINGS_USERS_LIST_PATH}/${encodeURIComponent(String(id))}`);
     };
 
     const doLogout = () => {

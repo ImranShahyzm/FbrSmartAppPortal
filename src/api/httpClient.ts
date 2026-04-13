@@ -1,9 +1,12 @@
+import { getActiveAppIdForHttpHeader } from './activeAppIdHeader';
 import {
     clearAuthCache,
     getAccessToken,
     setAccessToken,
 } from './tokenStorage';
 import { API_BASE_URL } from './apiBaseUrl';
+
+import { HttpHeaderNames } from './httpHeaders';
 
 let refreshPromise: Promise<string> | null = null;
 
@@ -46,7 +49,10 @@ export async function apiFetch(
 
     if (auth) {
         const token = getAccessToken();
-        if (token) headers.set('Authorization', `Bearer ${token}`);
+        if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+            headers.set(HttpHeaderNames.ActiveAppId, getActiveAppIdForHttpHeader());
+        }
     }
 
     const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -63,6 +69,7 @@ export async function apiFetch(
         const retryHeaders = new Headers(init.headers ?? {});
         retryHeaders.set('Accept', 'application/json');
         retryHeaders.set('Authorization', `Bearer ${newToken}`);
+        retryHeaders.set(HttpHeaderNames.ActiveAppId, getActiveAppIdForHttpHeader());
 
         return await fetch(`${API_BASE_URL}${path}`, {
             ...init,

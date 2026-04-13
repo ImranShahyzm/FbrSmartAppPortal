@@ -1,35 +1,55 @@
 import * as React from 'react';
-import {
-    AppBar as RaAppBar,
-    TitlePortal,
-    HideOnScroll,
-    useStore,
-    useSidebarState,
-} from 'react-admin';
+import { AppBar as RaAppBar, TitlePortal, HideOnScroll, useStore, useTranslate } from 'react-admin';
+import { Link } from 'react-router-dom';
+import { HiOutlineWrenchScrewdriver } from 'react-icons/hi2';
 import { ToolbarUserMenu } from './ToolbarUserMenu';
-import { AppBar as MuiAppBar, Toolbar, Box, useMediaQuery, type Theme } from '@mui/material';
+import {
+    AppBar as MuiAppBar,
+    Toolbar,
+    Box,
+    IconButton,
+    Tooltip,
+    Typography,
+    useMediaQuery,
+    type Theme,
+} from '@mui/material';
+import { alpha } from '@mui/material/styles';
 
 import Logo from './Logo';
 import { AppBarToolbar } from './AppBarToolbar';
 import { OdooAppSwitcher } from './OdooAppSwitcher';
 import { OdooTopNav } from './OdooTopNav';
+import { OdooShellMobileNav } from './OdooShellMobileNav';
 import { ToolbarCompanyName } from './ToolbarCompanyName';
 import type { ThemeName } from '../themes/themes';
 import { isOdooShellTheme } from '../apps/activeAppStore';
-
-/** Collapse drawer on desktop so Odoo top nav is primary (mobile still uses drawer). */
-function CloseSidebarOnMount() {
-    const [, setOpen] = useSidebarState();
-    React.useEffect(() => {
-        setOpen(false);
-    }, [setOpen]);
-    return null;
-}
+import { useResolvedActiveAppId } from '../apps/useResolvedActiveAppId';
+import {
+    ACCOUNTING_SUITE_APP_ID,
+    APPS_REGISTRY,
+    SETTINGS_APP_ID,
+} from '../apps/appsRegistry';
+import { SETTINGS_RECORD_RULE_FIELD_SETTINGS_PATH } from '../apps/workspacePaths';
+import { useCanAccess } from '../auth/useCanAccess';
 
 const CustomAppBar = () => {
     const isLargeEnough = useMediaQuery<Theme>(theme => theme.breakpoints.up('sm'));
-    const [themeName] = useStore<ThemeName>('themeName', 'nano');
+    const [themeName, setThemeName] = useStore<ThemeName>('themeName', 'nano');
+    React.useEffect(() => {
+        if (themeName !== 'nano') setThemeName('nano');
+    }, [themeName, setThemeName]);
     const odoo = isOdooShellTheme(themeName);
+    const activeAppId = useResolvedActiveAppId();
+    const canRecordRuleFieldSetup = useCanAccess(SETTINGS_APP_ID, 'securityGroups', 'write');
+    const translate = useTranslate();
+    const inAccountingWorkspace = activeAppId === ACCOUNTING_SUITE_APP_ID;
+    const hideTitlePortal =
+        inAccountingWorkspace || activeAppId === SETTINGS_APP_ID;
+    const workspaceAppLabel = React.useMemo(() => {
+        if (!inAccountingWorkspace) return null;
+        const entry = APPS_REGISTRY.find(a => a.id === ACCOUNTING_SUITE_APP_ID);
+        return entry?.name ?? translate('shell.accounting.accounting');
+    }, [inAccountingWorkspace, translate]);
 
     if (!odoo) {
         return (
@@ -44,14 +64,14 @@ const CustomAppBar = () => {
     return (
         <HideOnScroll>
             <MuiAppBar
-                position="fixed"
+                position="sticky"
                 color="secondary"
                 elevation={0}
                 sx={{
                     bgcolor: 'transparent',
                     boxShadow: 'none',
                     px: { xs: 0.5, sm: 1 },
-                    pt: { xs: 0.5, sm: 0.75 },
+                    pt: 0,
                 }}
             >
                 <Toolbar
@@ -69,11 +89,31 @@ const CustomAppBar = () => {
                         border: '1px solid rgba(0,0,0,0.08)',
                     }}
                 >
-                    <CloseSidebarOnMount />
+                    <OdooShellMobileNav />
                     <OdooAppSwitcher />
+                    {workspaceAppLabel ? (
+                        <Typography
+                            component="span"
+                            variant="body2"
+                            sx={{
+                                flexShrink: 0,
+                                mr: 0.75,
+                                pl: 0.25,
+                                fontSize: '0.9375rem',
+                                fontWeight: 600,
+                                lineHeight: 1.2,
+                                letterSpacing: '0.01em',
+                                color: theme =>
+                                    alpha((theme.vars || theme).palette.secondary.contrastText, 0.88),
+                                display: { xs: 'none', sm: 'inline' },
+                            }}
+                        >
+                            {workspaceAppLabel}
+                        </Typography>
+                    ) : null}
                     <Box
                         sx={{
-                            display: 'flex',
+                            display: hideTitlePortal ? 'none' : 'flex',
                             alignItems: 'center',
                             minWidth: 0,
                             flexShrink: 0,
@@ -85,6 +125,19 @@ const CustomAppBar = () => {
                     <OdooTopNav />
                     <Box component="span" sx={{ flex: 1, minWidth: 8 }} />
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        {activeAppId === SETTINGS_APP_ID && canRecordRuleFieldSetup ? (
+                            <Tooltip title="Record rule fields (developer)">
+                                <IconButton
+                                    component={Link}
+                                    to={SETTINGS_RECORD_RULE_FIELD_SETTINGS_PATH}
+                                    size="small"
+                                    color="inherit"
+                                    aria-label="Record rule fields"
+                                >
+                                    <HiOutlineWrenchScrewdriver size={22} />
+                                </IconButton>
+                            </Tooltip>
+                        ) : null}
                         <AppBarToolbar />
                         <ToolbarCompanyName />
                         <ToolbarUserMenu />

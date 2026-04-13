@@ -10,10 +10,12 @@ import {
     Box,
 } from '@mui/material';
 import { useStore, useTranslate } from 'react-admin';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { IoAppsOutline } from 'react-icons/io5';
 
-import { APPS_REGISTRY, DEFAULT_ACTIVE_APP_ID } from '../apps/appsRegistry';
-import { STORE_KEY_ACTIVE_APP } from '../apps/activeAppStore';
+import { getIdentityCached } from '../api/tokenStorage';
+import { APPS_REGISTRY, DEFAULT_ACTIVE_APP_ID, resolveAppIdFromPathname } from '../apps/appsRegistry';
+import { ACTIVE_APP_STORE_KEY } from '../apps/activeAppStore';
 
 /**
  * Odoo-style 3×3 app grid launcher (opens app picker dialog).
@@ -21,15 +23,23 @@ import { STORE_KEY_ACTIVE_APP } from '../apps/activeAppStore';
 export function OdooAppSwitcher() {
     const [open, setOpen] = React.useState(false);
     const translate = useTranslate();
-    const [activeAppId, setActiveAppId] = useStore<string>(
-        STORE_KEY_ACTIVE_APP,
-        DEFAULT_ACTIVE_APP_ID
-    );
+    const navigate = useNavigate();
+    const { pathname } = useLocation();
+    const [storedAppId, setActiveAppId] = useStore<string>(ACTIVE_APP_STORE_KEY, DEFAULT_ACTIVE_APP_ID);
+    const activeAppId = resolveAppIdFromPathname(pathname) ?? storedAppId;
 
-    const selectApp = (id: string, disabled?: boolean) => {
+    const identity = getIdentityCached();
+    const allowedList = identity?.apps;
+    const launcherApps =
+        allowedList != null && allowedList.length > 0
+            ? APPS_REGISTRY.filter(a => allowedList.includes(a.id))
+            : APPS_REGISTRY;
+
+    const selectApp = (id: string, basePath: string, disabled?: boolean) => {
         if (disabled) return;
         setActiveAppId(id);
         setOpen(false);
+        navigate(basePath, { replace: true });
     };
 
     return (
@@ -57,11 +67,11 @@ export function OdooAppSwitcher() {
                             pb: 2,
                         }}
                     >
-                        {APPS_REGISTRY.map(app => (
+                        {launcherApps.map(app => (
                             <Paper
                                 key={app.id}
                                 elevation={activeAppId === app.id ? 4 : 1}
-                                onClick={() => selectApp(app.id, app.disabled)}
+                                onClick={() => selectApp(app.id, app.basePath, app.disabled)}
                                 sx={{
                                     p: 2,
                                     cursor: app.disabled ? 'default' : 'pointer',

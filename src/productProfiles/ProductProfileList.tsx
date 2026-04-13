@@ -9,7 +9,9 @@ import {
     useUpdate,
     useNotify,
     ColumnsButton,
+    useCreatePath,
 } from 'react-admin';
+import { useNavigate } from 'react-router-dom';
 import { useOdooListSearchQ } from '../common/useOdooListSearchQ';
 import {
     Box,
@@ -83,6 +85,8 @@ function ProductListActions() {
     const { page, perPage, total, setPage } = useListContext();
     const [q, setQ] = useOdooListSearchQ();
     const [view, setView] = useStore<'list' | 'kanban'>('productProfiles.listView', 'list');
+    const createPath = useCreatePath();
+    const navigate = useNavigate();
 
     const pageStart = total ? (page - 1) * perPage + 1 : 0;
     const pageEnd   = total ? Math.min(page * perPage, total) : 0;
@@ -97,7 +101,7 @@ function ProductListActions() {
     ];
 
     return (
-        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: '12px' }}>
+        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: { xs: '4px', md: '12px' } }}>
             <Box
                 sx={{
                     width: '100%',
@@ -116,7 +120,14 @@ function ProductListActions() {
                     <Button
                         variant="contained"
                         size="small"
-                        onClick={() => (window.location.hash = '#/productProfiles/create')}
+                        onClick={() =>
+                            navigate(
+                                createPath({
+                                    type: 'create',
+                                    resource: 'productProfiles',
+                                })
+                            )
+                        }
                         sx={{
                             bgcolor: NAV_TEAL,
                             color: '#fff',
@@ -296,6 +307,8 @@ function VariantChips({ value }: { value?: string | string[] }) {
 // ── Kanban card ───────────────────────────────────────────────────────────────
 function ProductKanban() {
     const { data, isLoading } = useListContext();
+    const createPath = useCreatePath();
+    const navigate = useNavigate();
     if (isLoading) return null;
     const rows = data ? Object.values(data) : [];
 
@@ -325,7 +338,13 @@ function ProductKanban() {
                                 '&:hover': { boxShadow: 3 },
                             }}
                             onClick={() =>
-                                (window.location.hash = `#/productProfiles/${encodeURIComponent(r.id)}`)
+                                navigate(
+                                    createPath({
+                                        type: 'edit',
+                                        resource: 'productProfiles',
+                                        id: r.id,
+                                    })
+                                )
                             }
                         >
                             {/* Product image / placeholder */}

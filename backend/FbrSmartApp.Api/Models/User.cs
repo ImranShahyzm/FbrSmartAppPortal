@@ -39,4 +39,12 @@ public sealed class User
 
     /// <summary>Relative path under wwwroot/uploads, e.g. uploads/users/1/{guid}/avatar.png</summary>
     public string? ProfileImage { get; set; }
+
+    /// <summary>JSON document for module/resource access (e.g. accounting.chartOfAccounts read/write).</summary>
+    public string? AccessRightsJson { get; set; }
+
+    /// <summary>JSON array of flat permission strings: app.resource.action (effective cache).</summary>
+    public string? PermissionsJson { get; set; }
+
+    public ICollection<UserSecurityGroup> SecurityGroupLinks { get; set; } = new List<UserSecurityGroup>();
 }

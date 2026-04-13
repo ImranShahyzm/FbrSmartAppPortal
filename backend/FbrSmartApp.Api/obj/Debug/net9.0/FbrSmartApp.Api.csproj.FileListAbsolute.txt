@@ -510,3 +510,4 @@ E:\FbrSmartAppReact2\backend\fbrSmartApp.api\obj\Debug\net9.0\compressed\312wyg7
 E:\FbrSmartAppReact2\backend\fbrSmartApp.api\obj\Debug\net9.0\compressed\o01jn0q6k9-eslpw75vnn.gz
 E:\FbrSmartAppReact2\backend\fbrSmartApp.api\obj\Debug\net9.0\compressed\7a6ev7g2ki-0fw9h4psve.gz
 E:\FbrSmartAppReact2\backend\fbrSmartApp.api\obj\Debug\net9.0\compressed\p13q7z087q-tiuojtz0qo.gz
+e:\FbrSmartAppReact2\backend\FbrSmartApp.Api\obj\Debug\net9.0\FbrSmartApp.Api.sourcelink.json

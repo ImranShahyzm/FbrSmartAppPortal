@@ -78,7 +78,7 @@ function CompanyListActions() {
     ];
 
     return (
-        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: '12px' }}>
+        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: { xs: '4px', md: '12px' } }}>
             <Box
                 sx={{
                     width: '100%',

@@ -143,7 +143,7 @@ function ScenarioListActions() {
                 p: 0,
                 minHeight: 'unset',
                 flexDirection: 'column',
-                pt: '12px',
+                pt: { xs: '4px', md: '12px' },
             }}
         >
             <Box

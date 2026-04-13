@@ -1,3 +1,16 @@
+export type AccountingAccessRights = {
+    modules?: {
+        accounting?: {
+            chartOfAccounts?: { read?: boolean; write?: boolean };
+        };
+    };
+};
+
+export type PermissionsPayload = {
+    apps: string[];
+    permissions: string[];
+};
+
 export type Identity = {
     id: string;
     fullName: string;
@@ -8,6 +21,11 @@ export type Identity = {
     profileImage?: string | null;
     /** false when self-service company is not yet activated by platform admin */
     companyIsActivated?: boolean;
+    accessRights?: AccountingAccessRights | null;
+    /** Allowed launcher app ids from the API security contract */
+    apps?: string[];
+    /** Flat permission strings app.resource.action */
+    permissions?: string[];
 };
 
 const ACCESS_TOKEN_KEY = 'accessToken';

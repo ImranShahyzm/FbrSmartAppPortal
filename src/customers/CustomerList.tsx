@@ -7,7 +7,9 @@ import {
     useListContext,
     useStore,
     ColumnsButton,
+    useCreatePath,
 } from 'react-admin';
+import { useNavigate } from 'react-router-dom';
 import { useOdooListSearchQ } from '../common/useOdooListSearchQ';
 import {
     Box,
@@ -55,6 +57,8 @@ function CustomerListActions() {
     const { page, perPage, total, setPage } = useListContext();
     const [q, setQ] = useOdooListSearchQ();
     const [view, setView] = useStore<'list' | 'kanban'>('customers.listView', 'list');
+    const createPath = useCreatePath();
+    const navigate = useNavigate();
 
     const pageStart = total ? (page - 1) * perPage + 1 : 0;
     const pageEnd = total ? Math.min(page * perPage, total) : 0;
@@ -69,7 +73,7 @@ function CustomerListActions() {
     ];
 
     return (
-        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: '12px' }}>
+        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: { xs: '4px', md: '12px' } }}>
             <Box
                 sx={{
                     width: '100%',
@@ -88,7 +92,14 @@ function CustomerListActions() {
                     <Button
                         variant="contained"
                         size="small"
-                        onClick={() => (window.location.hash = '#/customers/create')}
+                        onClick={() =>
+                            navigate(
+                                createPath({
+                                    type: 'create',
+                                    resource: 'customers',
+                                })
+                            )
+                        }
                         sx={{
                             bgcolor: NAV_TEAL,
                             color: '#fff',
@@ -249,6 +260,8 @@ function CustomerListActions() {
 // ── Kanban card (match ProductProfileList layout) ──────────────────────────────
 function CustomerKanban() {
     const { data, isLoading } = useListContext();
+    const createPath = useCreatePath();
+    const navigate = useNavigate();
     if (isLoading) return null;
     const rows = data ? Object.values(data) : [];
 
@@ -276,7 +289,15 @@ function CustomerKanban() {
                                 transition: 'box-shadow .15s',
                                 '&:hover': { boxShadow: 3 },
                             }}
-                            onClick={() => (window.location.hash = `#/customers/${encodeURIComponent(r.id)}`)}
+                            onClick={() =>
+                                navigate(
+                                    createPath({
+                                        type: 'edit',
+                                        resource: 'customers',
+                                        id: r.id,
+                                    })
+                                )
+                            }
                         >
                             {/* Header band */}
                             <Box

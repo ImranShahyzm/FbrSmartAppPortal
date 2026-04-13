@@ -5,6 +5,18 @@ import {
     normalizeFbrInvoiceRecord,
 } from '../orders/fbrInvoiceDataProvider';
 import { apiFetch } from '../api/httpClient';
+import { normalizeGlChartAccountRecord } from '../accounting/glChartAccountTransform';
+import { normalizeGlJournalVoucherRecord } from '../accounting/glJournalVoucherTransform';
+
+/** Ensure react-admin record id + camelCase for voucher type API payloads. */
+function normalizeGlVoucherTypeRecord(row: unknown): Record<string, unknown> {
+    const o =
+        row && typeof row === 'object' && !Array.isArray(row)
+            ? { ...(row as Record<string, unknown>) }
+            : {};
+    const id = o.id ?? o.Id;
+    return { ...o, ...(id !== undefined ? { id } : {}) };
+}
 
 const backendResources = new Set([
     'productProfiles',
@@ -19,6 +31,11 @@ const backendResources = new Set([
     'fbrInvoices',
     'fbrScenarios',
     'fbrSalesTaxRates',
+    'glChartAccounts',
+    'glVoucherTypes',
+    'glJournalVouchers',
+    'registerCurrencies',
+    'securityGroups',
 ]);
 
 const pdiListResources: Record<string, (params: Record<string, unknown>) => string> = {
@@ -254,6 +271,50 @@ export default (type: string) => {
                                     params.pagination
                                 )
                             );
+                    }
+                    if (resource === 'glChartAccounts' && method === 'getList') {
+                        return backendDataProvider
+                            .getList(resource, params)
+                            .then(result => sliceListToPagination(result, params.pagination));
+                    }
+                    if (
+                        resource === 'glVoucherTypes' &&
+                        (method === 'getOne' || method === 'create' || method === 'update')
+                    ) {
+                        return (
+                            backendDataProvider as Record<
+                                string,
+                                (r: string, p: unknown) => Promise<{ data: unknown }>
+                            >
+                        )[method](resource, params).then(result => ({
+                            data: normalizeGlVoucherTypeRecord(result.data as Record<string, unknown>),
+                        }));
+                    }
+                    if (
+                        resource === 'glChartAccounts' &&
+                        (method === 'getOne' || method === 'create' || method === 'update')
+                    ) {
+                        return (
+                            backendDataProvider as Record<
+                                string,
+                                (r: string, p: unknown) => Promise<{ data: unknown }>
+                            >
+                        )[method](resource, params).then(result => ({
+                            data: normalizeGlChartAccountRecord(result.data as Record<string, unknown>),
+                        }));
+                    }
+                    if (
+                        resource === 'glJournalVouchers' &&
+                        (method === 'getOne' || method === 'create' || method === 'update')
+                    ) {
+                        return (
+                            backendDataProvider as Record<
+                                string,
+                                (r: string, p: unknown) => Promise<{ data: unknown }>
+                            >
+                        )[method](resource, params).then(result => ({
+                            data: normalizeGlJournalVoucherRecord(result.data as Record<string, unknown>),
+                        }));
                     }
                     if (resource === 'fbrInvoices' && method === 'getOne') {
                         return backendDataProvider

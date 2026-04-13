@@ -31,8 +31,8 @@ export type FormHeaderToolbarProps = {
 };
 
 /**
- * Odoo-style header actions: Save (cloud), optional Delete, Settings (placeholder), Close.
- * Reuse on any Create/Edit with `toolbar={false}` on the form and {@link FormSaveBridge} inside the form.
+ * Header actions: Save (cloud), optional Delete, Settings menu, Close.
+ * Use with `toolbar={false}` on the form and {@link FormSaveBridge} inside the form.
  */
 export function FormHeaderToolbar({
     saveEventName,

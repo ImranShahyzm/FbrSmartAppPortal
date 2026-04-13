@@ -3,6 +3,7 @@ import { Create, SimpleForm, useGetIdentity, Loading } from 'react-admin';
 import { Box, Divider, Typography } from '@mui/material';
 import { FormSaveBridge, FORM_SAVE_USER } from '../common/formToolbar';
 import { UserFormToolbar } from './UserFormToolbar';
+import { stickySimpleFormHeaderBarSx } from '../common/masterDetailFormTheme';
 import { UserMainFormBlocks, transformUserCreatePayload } from './userFormShared';
 
 export default function UserCreate() {
@@ -48,25 +49,7 @@ export default function UserCreate() {
             >
                 <FormSaveBridge eventName={FORM_SAVE_USER} />
 
-                <Box
-                    sx={{
-                        position: { md: 'sticky' },
-                        top: { md: 0 },
-                        zIndex: 5,
-                        bgcolor: 'background.paper',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        px: 2,
-                        py: '6px',
-                        mb: 1.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 2,
-                        flexWrap: 'wrap',
-                    }}
-                >
+                <Box sx={stickySimpleFormHeaderBarSx}>
                     <Box sx={{ minWidth: 0 }}>
                         <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ fontSize: '0.85rem' }}>
                             User

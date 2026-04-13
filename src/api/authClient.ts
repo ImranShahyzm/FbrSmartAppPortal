@@ -35,7 +35,21 @@ function normalizeIdentityPayload(x: unknown): Identity | null {
                   : undefined,
         companyIsActivated:
             raw.companyIsActivated === false || raw.CompanyIsActivated === false ? false : true,
+        accessRights: normalizeAccessRights(raw.accessRights ?? raw.AccessRights),
+        apps: normalizeStringArray(raw.apps ?? raw.Apps),
+        permissions: normalizeStringArray(raw.permissions ?? raw.Permissions),
     };
+}
+
+function normalizeStringArray(x: unknown): string[] | undefined {
+    if (!Array.isArray(x)) return undefined;
+    const out = x.map(i => String(i)).filter(s => s.length > 0);
+    return out.length > 0 ? out : [];
+}
+
+function normalizeAccessRights(x: unknown): Identity['accessRights'] {
+    if (x == null || typeof x !== 'object' || Array.isArray(x)) return null;
+    return x as Identity['accessRights'];
 }
 
 export async function login(username: string, password: string) {
