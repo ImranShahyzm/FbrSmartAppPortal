@@ -33,6 +33,23 @@ public sealed class AppDbContext : DbContext
     public DbSet<FbrScenario> FbrScenarios => Set<FbrScenario>();
     public DbSet<FbrSalesTaxRate> FbrSalesTaxRates => Set<FbrSalesTaxRate>();
     public DbSet<FbrSalesTaxRateChatterMessage> FbrSalesTaxRateChatterMessages => Set<FbrSalesTaxRateChatterMessage>();
+    public DbSet<GlChartOfAccount> GlChartOfAccounts => Set<GlChartOfAccount>();
+    public DbSet<GlAccountType> GlAccountTypes => Set<GlAccountType>();
+    public DbSet<GenBranchInfo> GenBranchInfos => Set<GenBranchInfo>();
+    public DbSet<GlChartOfAccountBranchDetail> GlChartOfAccountBranchDetails => Set<GlChartOfAccountBranchDetail>();
+    public DbSet<DataRegisterCurrency> DataRegisterCurrencies => Set<DataRegisterCurrency>();
+    public DbSet<GlVoucherType> GlVoucherTypes => Set<GlVoucherType>();
+    public DbSet<ApprovalStatus> ApprovalStatuses => Set<ApprovalStatus>();
+    public DbSet<GlVoucherMain> GlVoucherMains => Set<GlVoucherMain>();
+    public DbSet<GlVoucherDetail> GlVoucherDetails => Set<GlVoucherDetail>();
+    public DbSet<AppRecordMessage> AppRecordMessages => Set<AppRecordMessage>();
+    public DbSet<SecurityGroup> SecurityGroups => Set<SecurityGroup>();
+    public DbSet<UserSecurityGroup> UserSecurityGroups => Set<UserSecurityGroup>();
+    public DbSet<GroupAccessRight> GroupAccessRights => Set<GroupAccessRight>();
+    public DbSet<GroupRecordRule> GroupRecordRules => Set<GroupRecordRule>();
+    public DbSet<RecordRuleModelFieldSetting> RecordRuleModelFieldSettings => Set<RecordRuleModelFieldSetting>();
+    public DbSet<GroupMenuGrant> GroupMenuGrants => Set<GroupMenuGrant>();
+    public DbSet<SecurityGroupInheritance> SecurityGroupInheritances => Set<SecurityGroupInheritance>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +69,13 @@ public sealed class AppDbContext : DbContext
             entity.Property(x => x.NotificationChannel).HasMaxLength(16).IsRequired();
             entity.Property(x => x.AllowedCompanyIdsJson).HasMaxLength(500).IsRequired();
             entity.Property(x => x.ProfileImage).HasMaxLength(400);
+            entity.Property(x => x.AccessRightsJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.PermissionsJson).HasColumnType("nvarchar(max)");
+
+            entity.HasMany(x => x.SecurityGroupLinks)
+                .WithOne(x => x.User)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>
@@ -343,6 +367,249 @@ public sealed class AppDbContext : DbContext
                 .HasForeignKey(x => x.SalesTaxRateId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => x.SalesTaxRateId);
+        });
+
+        modelBuilder.Entity<GlAccountType>(entity =>
+        {
+            entity.ToTable("GLAccontType");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Title).HasMaxLength(100);
+            entity.Property(x => x.ReportingHead).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<GlChartOfAccount>(entity =>
+        {
+            entity.ToTable("GLChartOFAccount");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.GlCode).HasMaxLength(500);
+            entity.Property(x => x.GlTitle).HasMaxLength(500);
+            entity.Property(x => x.AccountCurrency).HasMaxLength(10);
+            entity.Property(x => x.EntryBy).HasMaxLength(50);
+            entity.Property(x => x.AccountLevelOne).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.AccountLevelTwo).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelThree).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelFour).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelFive).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelSix).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelSeven).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelEight).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelNine).HasMaxLength(10);
+            entity.Property(x => x.AccountLevelTen).HasMaxLength(10);
+            entity.Property(x => x.OldGlCode).HasMaxLength(250);
+            entity.Property(x => x.Status).IsRequired();
+            entity.Property(x => x.ReadOnly).IsRequired();
+            entity.Property(x => x.AllowReconciliation).IsRequired();
+            entity.HasIndex(x => x.CompanyId);
+            entity.Property(x => x.ChartAccountGroupKey).HasMaxLength(36);
+        });
+
+        modelBuilder.Entity<GenBranchInfo>(entity =>
+        {
+            entity.ToTable("gen_BranchInfo");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.BranchName).HasMaxLength(100);
+            entity.Property(x => x.BranchCode).HasMaxLength(50);
+            entity.Property(x => x.BranchNumber).HasMaxLength(50);
+            entity.Property(x => x.BranchEmail).HasMaxLength(50);
+            entity.Property(x => x.BranchAddress).HasMaxLength(200);
+            entity.Property(x => x.BranchDescription).HasMaxLength(500);
+            entity.HasIndex(x => x.CompanyId);
+        });
+
+        modelBuilder.Entity<GlChartOfAccountBranchDetail>(entity =>
+        {
+            entity.ToTable("GLChartOfAccountBranchDetail");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.GlcaId);
+            entity.HasIndex(x => x.BranchId);
+        });
+
+        modelBuilder.Entity<SecurityGroup>(entity =>
+        {
+            entity.ToTable("SecurityGroups");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.ApplicationScope).HasMaxLength(120);
+            entity.Property(x => x.Notes).HasColumnType("nvarchar(max)");
+            entity.HasIndex(x => new { x.CompanyId, x.Name });
+            entity.HasMany(x => x.UserLinks)
+                .WithOne(x => x.SecurityGroup)
+                .HasForeignKey(x => x.SecurityGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.AccessRights)
+                .WithOne(x => x.SecurityGroup)
+                .HasForeignKey(x => x.SecurityGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.RecordRules)
+                .WithOne(x => x.SecurityGroup)
+                .HasForeignKey(x => x.SecurityGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.MenuGrants)
+                .WithOne(x => x.SecurityGroup)
+                .HasForeignKey(x => x.SecurityGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.ParentLinks)
+                .WithOne(x => x.SecurityGroup)
+                .HasForeignKey(x => x.SecurityGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserSecurityGroup>(entity =>
+        {
+            entity.ToTable("UserSecurityGroups");
+            entity.HasKey(x => new { x.UserId, x.SecurityGroupId });
+            entity.HasIndex(x => x.SecurityGroupId);
+        });
+
+        modelBuilder.Entity<GroupAccessRight>(entity =>
+        {
+            entity.ToTable("GroupAccessRights");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.DisplayName).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.ModelKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.PermissionsPrefix).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.SecurityGroupId);
+        });
+
+        modelBuilder.Entity<GroupRecordRule>(entity =>
+        {
+            entity.ToTable("GroupRecordRules");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.ModelKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.PermissionsPrefix).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Domain).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.FieldName).HasMaxLength(120);
+            entity.Property(x => x.Operator).HasMaxLength(16);
+            entity.Property(x => x.RightOperandJson).HasColumnType("nvarchar(max)");
+            entity.HasIndex(x => x.SecurityGroupId);
+        });
+
+        modelBuilder.Entity<GroupMenuGrant>(entity =>
+        {
+            entity.ToTable("GroupMenuGrants");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MenuKey).HasMaxLength(200).IsRequired();
+            entity.HasIndex(x => new { x.SecurityGroupId, x.MenuKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<SecurityGroupInheritance>(entity =>
+        {
+            entity.ToTable("SecurityGroupInheritances");
+            entity.HasKey(x => new { x.SecurityGroupId, x.ParentSecurityGroupId });
+            entity.HasOne(x => x.ParentGroup)
+                .WithMany()
+                .HasForeignKey(x => x.ParentSecurityGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RecordRuleModelFieldSetting>(entity =>
+        {
+            entity.ToTable("RecordRuleModelFieldSettings");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.PermissionsPrefix).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ModelKey).HasMaxLength(128).IsRequired();
+            entity.Property(x => x.FieldName).HasMaxLength(128).IsRequired();
+            entity.HasIndex(x => new { x.PermissionsPrefix, x.ModelKey, x.FieldName }).IsUnique();
+        });
+
+        modelBuilder.Entity<DataRegisterCurrency>(entity =>
+        {
+            entity.ToTable("data_RegisterCurrency");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.CurrencyName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.CurrencyShortName).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.CurrencySymbol).HasMaxLength(100).IsRequired();
+        });
+
+        modelBuilder.Entity<GlVoucherType>(entity =>
+        {
+            entity.ToTable("GLVoucherType");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Title).HasMaxLength(50);
+            entity.Property(x => x.Description).HasMaxLength(100);
+            entity.Property(x => x.DocumentPrefix).HasMaxLength(32);
+            entity.Property(x => x.EntryBy).HasMaxLength(50);
+            entity.HasOne(x => x.Currency)
+                .WithMany()
+                .HasForeignKey(x => x.CurrencyID)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.DefaultControlGlAccount)
+                .WithMany()
+                .HasForeignKey(x => x.DefaultControlGlAccountId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.DefaultIncomeGlAccount)
+                .WithMany()
+                .HasForeignKey(x => x.DefaultIncomeGlAccountId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.Property(x => x.SignatureName1).HasMaxLength(200);
+            entity.Property(x => x.SignatureName2).HasMaxLength(200);
+            entity.Property(x => x.SignatureName3).HasMaxLength(200);
+            entity.Property(x => x.SignatureName4).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<ApprovalStatus>(entity =>
+        {
+            entity.ToTable("ApprovalStatuses");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Code).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<GlVoucherMain>(entity =>
+        {
+            entity.ToTable("GLvMAIN");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.VoucherNo).HasMaxLength(50);
+            entity.Property(x => x.Remarks).HasMaxLength(300);
+            entity.Property(x => x.ManualNo).HasMaxLength(50);
+            entity.Property(x => x.VoucherDate).HasColumnType("date");
+            entity.Property(x => x.TotalDr).HasPrecision(18, 3);
+            entity.Property(x => x.TotalCr).HasPrecision(18, 3);
+            entity.HasOne(x => x.VoucherType)
+                .WithMany()
+                .HasForeignKey(x => x.VoucherTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ApprovalStatus)
+                .WithMany()
+                .HasForeignKey(x => x.ApprovalStatusId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany(x => x.Details)
+                .WithOne(x => x.VoucherMain!)
+                .HasForeignKey(x => x.VoucherMainId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GlVoucherDetail>(entity =>
+        {
+            entity.ToTable("GLvDetail");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Dr).HasPrecision(18, 3);
+            entity.Property(x => x.Cr).HasPrecision(18, 3);
+            entity.Property(x => x.TaxAmount).HasPrecision(18, 3);
+            entity.Property(x => x.PartnerRef).HasMaxLength(200);
+            entity.Property(x => x.FbrSalesTaxRateId);
+            entity.Property(x => x.FbrSalesTaxRateIdsJson).HasMaxLength(500);
+            entity.Property(x => x.Narration).HasColumnType("nvarchar(max)");
+            entity.HasOne(x => x.GlAccount)
+                .WithMany()
+                .HasForeignKey(x => x.GlAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AppRecordMessage>(entity =>
+        {
+            entity.ToTable("AppRecordMessages");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ResourceKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.RecordKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SystemAction).HasMaxLength(32);
+            entity.Property(x => x.Body).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.AuthorDisplayName).HasMaxLength(200);
+            entity.Property(x => x.AttachmentsJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.MentionedUserIdsJson).HasColumnType("nvarchar(max)");
+            entity.HasIndex(x => new { x.CompanyId, x.ResourceKey, x.RecordKey });
         });
     }
 }

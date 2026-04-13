@@ -7,6 +7,7 @@ import {
     getAccessToken,
     getIdentityCached,
     Identity,
+    PermissionsPayload,
     setIdentityCached,
 } from './api/tokenStorage';
 
@@ -27,6 +28,10 @@ function identityToUserIdentity(me: Identity) {
         avatar: avatarUrlFromProfilePath(me.profileImage),
         profileImage: me.profileImage,
         companyIsActivated: me.companyIsActivated !== false,
+        role: me.role,
+        accessRights: me.accessRights ?? null,
+        apps: me.apps,
+        permissions: me.permissions,
     };
 }
 
@@ -52,7 +57,13 @@ const authProvider: AuthProvider = {
         // Try to load identity via /me (will trigger refresh-on-401 in http client)
         await getMe();
     },
-    getPermissions: () => Promise.resolve(),
+    getPermissions: async () => {
+        const cached = getIdentityCached();
+        const apps = cached?.apps ?? [];
+        const permissions = cached?.permissions ?? [];
+        const payload: PermissionsPayload = { apps, permissions };
+        return payload;
+    },
     getIdentity: async () => {
         const cached = getIdentityCached();
         if (getAccessToken()) {

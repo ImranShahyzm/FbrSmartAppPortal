@@ -17,12 +17,13 @@ import {
     required,
 } from 'react-admin';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Alert, Box, Button, Card, CardContent, CircularProgress, Divider, Grid, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Divider, Grid, Typography } from '@mui/material';
 
 import { postFbrInvoiceToFbr, postFbrInvoiceValidate } from '../api/fbrInvoiceFbrApi';
 import { parseApiUtcInstant } from '../common/parseApiUtcInstant';
 import { FormSaveBridge, FORM_SAVE_FBR_INVOICE } from '../common/formToolbar';
 import { FormHeaderToolbar } from '../common/formToolbar';
+import { StatusBreadcrumb, WorkflowActionButton } from '../common/workflowChevronUi';
 import { CustomerInvoicePreview } from './CustomerInvoicePreview';
 import { InvoiceTotalsForm } from './InvoiceTotalsForm';
 import { OrderChatter } from './OrderChatter';
@@ -78,7 +79,7 @@ function InvoiceFieldRow({ label, children }: { label: string; children: React.R
     );
 }
 
-/** Odoo-style diagonal corner ribbon (replaces inline Status field). */
+/** Diagonal corner ribbon for status (replaces inline Status field). */
 function InvoiceStatusRibbon({ visible }: { visible: boolean }) {
     const record = useRecordContext<any>();
     const status = useWatch({ name: 'status' }) as string | undefined;
@@ -504,122 +505,6 @@ export function FbrInvoiceForm({ mode }: { mode: FbrInvoiceFormMode }) {
 }
 
 // ─────────────────────────────────────────────
-// Odoo-style status breadcrumb chevrons
-// ─────────────────────────────────────────────
-const CHEVRON_H = 32;
-const CHEVRON_OVERLAP = 10; // px each chevron overlaps the next
-
-function StatusBreadcrumb({ stages, activeKey }: { stages: Array<{ key: string; label: string }>; activeKey: string }) {
-    const activeIdx = stages.findIndex(s => s.key === activeKey);
-
-    return (
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {stages.map((s, i) => {
-                const isPast = i < activeIdx;
-                const isActive = i === activeIdx;
-                const isFirst = i === 0;
-                const isLast = i === stages.length - 1;
-
-                // Colours matching Odoo's purple/grey palette
-                const bg = isActive ? '#875A7B' : isPast ? '#c8b4c3' : '#e9e9e9';
-                const color = isActive || isPast ? '#fff' : '#666';
-
-                // Each chevron is a clipped div — left notch in, right arrow out
-                // except first (no left notch) and last (no right arrow)
-                const clipPath = (() => {
-                    const h = CHEVRON_H;
-                    const arrowW = 10; // width of the arrow tip
-                    if (isFirst && isLast) return 'none';
-                    if (isFirst) return `polygon(0 0, calc(100% - ${arrowW}px) 0, 100% 50%, calc(100% - ${arrowW}px) 100%, 0 100%)`;
-                    if (isLast) return `polygon(${arrowW}px 0, 100% 0, 100% 100%, ${arrowW}px 100%, 0 50%)`;
-                    return `polygon(${arrowW}px 0, calc(100% - ${arrowW}px) 0, 100% 50%, calc(100% - ${arrowW}px) 100%, ${arrowW}px 100%, 0 50%)`;
-                })();
-
-                return (
-                    <Box
-                        key={s.key}
-                        sx={{
-                            position: 'relative',
-                            ml: i === 0 ? 0 : `-${CHEVRON_OVERLAP}px`,
-                            zIndex: stages.length - i,
-                            height: CHEVRON_H,
-                            display: 'flex',
-                            alignItems: 'center',
-                            px: isFirst ? '14px' : '20px',
-                            pr: isLast ? '14px' : '20px',
-                            bgcolor: bg,
-                            color,
-                            clipPath,
-                            fontSize: 12,
-                            fontWeight: isActive ? 700 : 500,
-                            letterSpacing: '0.01em',
-                            userSelect: 'none',
-                            transition: 'background 0.15s',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        {s.label}
-                    </Box>
-                );
-            })}
-        </Box>
-    );
-}
-
-// ─────────────────────────────────────────────
-// Odoo-style action button (solid purple fill)
-// ─────────────────────────────────────────────
-function OdooActionButton({
-    label,
-    onClick,
-    loading,
-    variant = 'primary',
-    disabled,
-}: {
-    label: string;
-    onClick: () => void;
-    loading?: boolean;
-    variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
-    disabled?: boolean;
-}) {
-    const styles: Record<string, React.CSSProperties> = {
-        primary: { background: '#875A7B', color: '#fff', border: '1px solid #6d476a' },
-        secondary: { background: '#fff', color: '#875A7B', border: '1px solid #875A7B' },
-        danger: { background: '#fff', color: '#d9534f', border: '1px solid #d9534f' },
-        ghost: { background: '#f8f8f8', color: '#555', border: '1px solid #ccc' },
-    };
-    const s = styles[variant];
-
-    return (
-        <Box
-            component="button"
-            type="button"
-            onClick={onClick}
-            disabled={disabled || loading}
-            sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                height: 30,
-                px: '12px',
-                borderRadius: '4px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: disabled || loading ? 'not-allowed' : 'pointer',
-                opacity: disabled ? 0.55 : 1,
-                transition: 'filter 0.1s',
-                '&:hover:not(:disabled)': { filter: 'brightness(0.92)' },
-                '&:active:not(:disabled)': { filter: 'brightness(0.85)' },
-                ...s,
-            }}
-        >
-            {loading ? <CircularProgress size={13} sx={{ color: 'inherit' }} /> : null}
-            {label}
-        </Box>
-    );
-}
-
-// ─────────────────────────────────────────────
 // Workflow bar — action buttons LEFT, status breadcrumb RIGHT
 // ─────────────────────────────────────────────
 function InvoiceWorkflowBar({ isLocked }: { isLocked: boolean }) {
@@ -638,7 +523,7 @@ function InvoiceWorkflowBar({ isLocked }: { isLocked: boolean }) {
     const canCancel = !isLocked && st !== 'posted' && st !== 'cancelled' && id.length > 0;
     const canResetDraft = !isLocked && st === 'cancelled' && id.length > 0;
 
-    // Status breadcrumb stages — mirrors Odoo's invoice flow
+    // Invoice lifecycle stages for the chevron bar
     const breadcrumbStages = [
         { key: 'ordered', label: 'Draft' },
         { key: 'delivered', label: 'Validated' },
@@ -717,7 +602,7 @@ function InvoiceWorkflowBar({ isLocked }: { isLocked: boolean }) {
             {/* ── Left: action buttons ── */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 {canValidate && (
-                    <OdooActionButton
+                    <WorkflowActionButton
                         label="Validate"
                         variant="primary"
                         loading={loading === 'validate'}
@@ -726,7 +611,7 @@ function InvoiceWorkflowBar({ isLocked }: { isLocked: boolean }) {
                     />
                 )}
                 {canPost && (
-                    <OdooActionButton
+                    <WorkflowActionButton
                         label="Confirm & Post"
                         variant="primary"
                         loading={loading === 'post'}
@@ -735,7 +620,7 @@ function InvoiceWorkflowBar({ isLocked }: { isLocked: boolean }) {
                     />
                 )}
                 {canCancel && (
-                    <OdooActionButton
+                    <WorkflowActionButton
                         label="Cancel"
                         variant="danger"
                         loading={loading === 'status'}
@@ -744,7 +629,7 @@ function InvoiceWorkflowBar({ isLocked }: { isLocked: boolean }) {
                     />
                 )}
                 {canResetDraft && (
-                    <OdooActionButton
+                    <WorkflowActionButton
                         label="Reset to Draft"
                         variant="ghost"
                         loading={loading === 'status'}

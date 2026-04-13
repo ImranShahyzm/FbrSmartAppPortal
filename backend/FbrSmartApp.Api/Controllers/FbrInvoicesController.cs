@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using System.Text.Json;
+using FbrSmartApp.Api.Auth;
 using FbrSmartApp.Api.Data;
 using FbrSmartApp.Api.Models;
 using FbrSmartApp.Api.Services;
 using FbrSmartApp.Api.Services.Fbr;
+using FbrSmartApp.Api.Services.RecordRules;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,18 +19,22 @@ public sealed class FbrInvoicesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IFbrDigitalInvoicingClient _fbrClient;
     private readonly IFbrInvoiceExcelImportService _excelImport;
+    private readonly RecordRulesService _recordRules;
 
     public FbrInvoicesController(
         AppDbContext db,
         IFbrDigitalInvoicingClient fbrClient,
-        IFbrInvoiceExcelImportService excelImport)
+        IFbrInvoiceExcelImportService excelImport,
+        RecordRulesService recordRules)
     {
         _db = db;
         _fbrClient = fbrClient;
         _excelImport = excelImport;
+        _recordRules = recordRules;
     }
 
     [HttpGet]
+    [HasPermission("fbr.fbrInvoices.read")]
     public async Task<IActionResult> GetList(
         [FromQuery] string? sort,
         [FromQuery] string? range,
@@ -36,8 +42,12 @@ public sealed class FbrInvoicesController : ControllerBase
         CancellationToken ct
     )
     {
+        var user = await GetCurrentUserAsync(ct);
+        if (user is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
         var query = _db.FbrInvoices.AsNoTracking().Where(x => x.CompanyId == companyId);
+        query = await _recordRules.ApplyReadFilterAsync(query, user, "fbr", "fbrInvoices", ct);
 
         if (!string.IsNullOrWhiteSpace(filter))
         {
@@ -155,6 +165,7 @@ public sealed class FbrInvoicesController : ControllerBase
     }
 
     [HttpGet("import/template")]
+    [HasPermission("fbr.fbrInvoices.read")]
     public IActionResult GetImportTemplate()
     {
         var bytes = _excelImport.BuildTemplateWorkbook();
@@ -166,6 +177,7 @@ public sealed class FbrInvoicesController : ControllerBase
     }
 
     [HttpPost("import")]
+    [HasPermission("fbr.fbrInvoices.create")]
     [RequestSizeLimit(20_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = 20_000_000)]
     public async Task<ActionResult<FbrInvoiceImportResponseDto>> ImportExcel(
@@ -174,6 +186,9 @@ public sealed class FbrInvoicesController : ControllerBase
     {
         if (file is null || file.Length == 0)
             return BadRequest(new { message = "No file uploaded." });
+
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
 
         var companyId = GetCompanyIdOrThrow();
         var company = await _db.Companies.AsNoTracking()
@@ -216,7 +231,7 @@ public sealed class FbrInvoicesController : ControllerBase
                 continue;
             }
 
-            var (dto, err) = await TryCreateInvoiceAsync(companyId, user, g.Request, ct);
+            var (dto, err) = await TryCreateInvoiceAsync(companyId, actingUser, user, g.Request, ct);
             if (err is not null)
             {
                 failed++;
@@ -255,11 +270,14 @@ public sealed class FbrInvoicesController : ControllerBase
     /// and product profiles that already have a PBR transaction type, plus an effective sales tax rate.
     /// </summary>
     [HttpPost("demo-data")]
+    [HasPermission("fbr.fbrInvoices.create")]
     public async Task<ActionResult<FbrInvoiceDemoSeedResponseDto>> PostDemoData(CancellationToken ct)
     {
         const int count = 10;
         var companyId = GetCompanyIdOrThrow();
-        var user = User.FindFirstValue("fullName") ?? User.Identity?.Name;
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
+        var displayName = User.FindFirstValue("fullName") ?? User.Identity?.Name;
 
         var companyExists = await _db.Companies.AsNoTracking()
             .AnyAsync(x => x.Id == companyId, ct);
@@ -380,7 +398,7 @@ public sealed class FbrInvoicesController : ControllerBase
                 },
             };
 
-            var (dto, err) = await TryCreateInvoiceAsync(companyId, user, req, ct);
+            var (dto, err) = await TryCreateInvoiceAsync(companyId, actingUser, displayName, req, ct);
             if (err is not null)
                 response.Errors.Add($"Invoice {i + 1}: {err}");
             else if (dto is not null)
@@ -394,26 +412,38 @@ public sealed class FbrInvoicesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [HasPermission("fbr.fbrInvoices.read")]
     public async Task<ActionResult<FbrInvoiceDetailDto>> GetOne(Guid id, CancellationToken ct)
     {
+        var user = await GetCurrentUserAsync(ct);
+        if (user is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
         var inv = await _db.FbrInvoices.AsNoTracking()
             .Include(x => x.Lines)
             .Include(x => x.ChatterMessages)
             .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
         if (inv is null) return NotFound();
+
+        if (!await _recordRules.SatisfiesReadAsync(inv, user, "fbr", "fbrInvoices", ct))
+            return Forbid();
+
         return Ok(await MapDetailAsync(inv, companyId, ct));
     }
 
     [HttpPost]
+    [HasPermission("fbr.fbrInvoices.create")]
     public async Task<ActionResult<FbrInvoiceDetailDto>> Create(
         [FromBody] UpsertFbrInvoiceRequest req,
         CancellationToken ct
     )
     {
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
-        var user = User.FindFirstValue("fullName") ?? User.Identity?.Name;
-        var (dto, err) = await TryCreateInvoiceAsync(companyId, user, req, ct);
+        var displayName = User.FindFirstValue("fullName") ?? User.Identity?.Name;
+        var (dto, err) = await TryCreateInvoiceAsync(companyId, actingUser, displayName, req, ct);
         if (err is not null)
             return BadRequest(new { message = err });
         return Ok(dto);
@@ -422,6 +452,7 @@ public sealed class FbrInvoicesController : ControllerBase
     /// <summary>Same persistence as <see cref="Create"/> — used by Excel import.</summary>
     private async Task<(FbrInvoiceDetailDto? Detail, string? Error)> TryCreateInvoiceAsync(
         int companyId,
+        User? actingUser,
         string? userDisplayName,
         UpsertFbrInvoiceRequest req,
         CancellationToken ct)
@@ -486,6 +517,10 @@ public sealed class FbrInvoicesController : ControllerBase
         if (lineErr != null)
             return (null, lineErr);
         RecalcTotals(entity);
+
+        if (actingUser is not null &&
+            !await _recordRules.SatisfiesCreateAsync(entity, actingUser, "fbr", "fbrInvoices", ct))
+            return (null, "You are not allowed to create this invoice under the current record rules.");
 
         _db.FbrInvoices.Add(entity);
         await _db.SaveChangesAsync(ct);
@@ -574,20 +609,25 @@ public sealed class FbrInvoicesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [HasPermission("fbr.fbrInvoices.write")]
     public async Task<ActionResult<FbrInvoiceDetailDto>> Update(
         Guid id,
         [FromBody] UpsertFbrInvoiceRequest req,
         CancellationToken ct
     )
     {
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
-        var currentHeader = await _db.FbrInvoices.AsNoTracking()
-            .Where(x => x.Id == id && x.CompanyId == companyId)
-            .Select(x => new { x.Status, x.IsLocked })
-            .FirstOrDefaultAsync(ct);
-        if (currentHeader is null) return NotFound();
-        if (currentHeader.IsLocked)
+        var writeEntity = await _db.FbrInvoices.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
+        if (writeEntity is null) return NotFound();
+        if (writeEntity.IsLocked)
             return Conflict(new { message = "This invoice is posted to FBR and cannot be edited." });
+
+        if (!await _recordRules.SatisfiesWriteAsync(writeEntity, actingUser, "fbr", "fbrInvoices", ct))
+            return Forbid();
 
         var invoiceDateUtc = req.InvoiceDateUtc ?? await _db.FbrInvoices.AsNoTracking()
             .Where(x => x.Id == id && x.CompanyId == companyId)
@@ -630,7 +670,7 @@ public sealed class FbrInvoicesController : ControllerBase
 
         // Update header + totals in one statement (no EF concurrency rowcount checks).
         var updater = User.FindFirstValue("fullName") ?? User.Identity?.Name;
-        var nextStatus = SanitizeInvoiceStatusOnUpdate(currentHeader.Status, req.Status);
+        var nextStatus = SanitizeInvoiceStatusOnUpdate(writeEntity.Status, req.Status);
         await _db.FbrInvoices
             .Where(x => x.Id == id && x.CompanyId == companyId)
             .ExecuteUpdateAsync(
@@ -807,26 +847,42 @@ public sealed class FbrInvoicesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [HasPermission("fbr.fbrInvoices.delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
         var entity = await _db.FbrInvoices.FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
         if (entity is null) return NotFound();
         if (entity.IsLocked)
             return Conflict(new { message = "This invoice is posted to FBR and cannot be deleted." });
+
+        if (!await _recordRules.SatisfiesDeleteAsync(entity, actingUser, "fbr", "fbrInvoices", ct))
+            return Forbid();
+
         _db.FbrInvoices.Remove(entity);
         await _db.SaveChangesAsync(ct);
         return Ok(new { id });
     }
 
     [HttpPost("{id:guid}/validate")]
+    [HasPermission("fbr.fbrInvoices.write")]
     public async Task<ActionResult<FbrInvoiceDetailDto>> ValidateWithFbr(Guid id, CancellationToken ct)
     {
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
         var inv = await _db.FbrInvoices
             .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
         if (inv is null) return NotFound();
+
+        if (!await _recordRules.SatisfiesWriteAsync(inv, actingUser, "fbr", "fbrInvoices", ct))
+            return Forbid();
+
         if (inv.IsLocked)
             return Conflict(new { message = "Invoice is locked." });
         if (!string.Equals(inv.Status, "ordered", StringComparison.OrdinalIgnoreCase))
@@ -883,13 +939,21 @@ public sealed class FbrInvoicesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/post")]
+    [HasPermission("fbr.fbrInvoices.write")]
     public async Task<ActionResult<FbrInvoiceDetailDto>> PostToFbr(Guid id, CancellationToken ct)
     {
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
         var inv = await _db.FbrInvoices
             .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
         if (inv is null) return NotFound();
+
+        if (!await _recordRules.SatisfiesWriteAsync(inv, actingUser, "fbr", "fbrInvoices", ct))
+            return Forbid();
+
         if (inv.IsLocked)
             return Conflict(new { message = "Invoice is already posted and locked." });
         if (!string.Equals(inv.Status, "delivered", StringComparison.OrdinalIgnoreCase))
@@ -951,15 +1015,22 @@ public sealed class FbrInvoicesController : ControllerBase
 
     /// <summary>Append chatter message + optional file payloads (base64).</summary>
     [HttpPost("{id:guid}/chatter")]
+    [HasPermission("fbr.fbrInvoices.write")]
     public async Task<ActionResult<ChatterMessageDto>> PostChatter(
         Guid id,
         [FromBody] PostChatterRequest req,
         CancellationToken ct
     )
     {
+        var actingUser = await GetCurrentUserAsync(ct);
+        if (actingUser is null) return Unauthorized();
+
         var companyId = GetCompanyIdOrThrow();
         var inv = await _db.FbrInvoices.FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
         if (inv is null) return NotFound();
+
+        if (!await _recordRules.SatisfiesWriteAsync(inv, actingUser, "fbr", "fbrInvoices", ct))
+            return Forbid();
 
         var author = User.FindFirstValue("fullName") ?? User.Identity?.Name ?? "User";
         string? attachmentsJson = null;
@@ -1373,6 +1444,13 @@ public sealed class FbrInvoicesController : ControllerBase
         if (!int.TryParse(raw, out var companyId))
             throw new UnauthorizedAccessException("Missing companyId claim.");
         return companyId;
+    }
+
+    private async Task<User?> GetCurrentUserAsync(CancellationToken ct)
+    {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(sub, out var userId)) return null;
+        return await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
     }
 
     public sealed class UpsertFbrInvoiceRequest

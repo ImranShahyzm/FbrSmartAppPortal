@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using FbrSmartApp.Api.Data;
 using FbrSmartApp.Api.Models;
+using FbrSmartApp.Api.Auth;
 using FbrSmartApp.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -32,6 +33,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpGet]
+    [HasPermission("settings.users.read")]
     public async Task<IActionResult> GetList(
         [FromQuery] string? sort,
         [FromQuery] string? range,
@@ -158,6 +160,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [HasPermission("settings.users.read")]
     public async Task<IActionResult> GetOne(Guid id, CancellationToken ct)
     {
         var companyId = GetCompanyIdOrThrow();
@@ -168,6 +171,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost]
+    [HasPermission("settings.users.create")]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request, CancellationToken ct)
     {
         var companyId = GetCompanyIdOrThrow();
@@ -187,6 +191,10 @@ public sealed class UsersController : ControllerBase
         if (!allowed.Contains(defaultCo))
             allowed.Add(defaultCo);
 
+        var role = string.IsNullOrWhiteSpace(request.Role) ? "User" : request.Role!.Trim();
+        const string fullAccountingAccess =
+            """{"modules":{"accounting":{"chartOfAccounts":{"read":true,"write":true}}}}""";
+
         var entity = new User
         {
             Id = Guid.NewGuid(),
@@ -194,7 +202,7 @@ public sealed class UsersController : ControllerBase
             Username = username,
             FullName = fullName,
             PasswordHash = _hasher.HashPassword(password),
-            Role = string.IsNullOrWhiteSpace(request.Role) ? "User" : request.Role!.Trim(),
+            Role = role,
             IsActive = true,
             Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim(),
             PreferredLanguage = string.IsNullOrWhiteSpace(request.PreferredLanguage)
@@ -211,6 +219,9 @@ public sealed class UsersController : ControllerBase
             NotificationChannel = request.NotificationChannel is "inApp" ? "inApp" : "email",
             AllowedCompanyIdsJson = JsonSerializer.Serialize(allowed),
             DefaultCompanyId = defaultCo,
+            AccessRightsJson = string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
+                ? fullAccountingAccess
+                : null,
         };
 
         _db.Users.Add(entity);
@@ -226,6 +237,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [HasPermission("settings.users.write")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request, CancellationToken ct)
     {
         var companyId = GetCompanyIdOrThrow();
@@ -267,6 +279,14 @@ public sealed class UsersController : ControllerBase
         entity.AllowedCompanyIdsJson = JsonSerializer.Serialize(allowed);
         entity.DefaultCompanyId = defaultCo;
 
+        const string fullAccountingAccessUpdate =
+            """{"modules":{"accounting":{"chartOfAccounts":{"read":true,"write":true}}}}""";
+        if (string.Equals(entity.Role, "Admin", StringComparison.OrdinalIgnoreCase) &&
+            string.IsNullOrWhiteSpace(entity.AccessRightsJson))
+        {
+            entity.AccessRightsJson = fullAccountingAccessUpdate;
+        }
+
         if (!string.IsNullOrWhiteSpace(request.ProfileImageBase64))
         {
             entity.ProfileImage = await SaveProfileImageAsync(companyId, entity.Id, request.ProfileImageBase64!, ct);
@@ -277,6 +297,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [HasPermission("settings.users.delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var companyId = GetCompanyIdOrThrow();
@@ -293,6 +314,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/duplicate")]
+    [HasPermission("settings.users.create")]
     public async Task<IActionResult> Duplicate(Guid id, CancellationToken ct)
     {
         var companyId = GetCompanyIdOrThrow();
@@ -328,6 +350,7 @@ public sealed class UsersController : ControllerBase
             NotificationChannel = src.NotificationChannel,
             AllowedCompanyIdsJson = src.AllowedCompanyIdsJson,
             DefaultCompanyId = src.DefaultCompanyId ?? src.CompanyId,
+            AccessRightsJson = src.AccessRightsJson,
             ProfileImage = null,
         };
 
@@ -338,6 +361,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/password")]
+    [HasPermission("settings.users.write")]
     public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
         var companyId = GetCompanyIdOrThrow();

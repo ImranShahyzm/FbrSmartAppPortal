@@ -18,6 +18,13 @@ import {
     UNDERLINE_FIELD_SX,
 } from '../common/odooCompactFormFields';
 import { UserProfileAvatarInput } from './UserProfileAvatarInput';
+import {
+    masterDetailPrimaryCardContentSx,
+    masterDetailPrimaryCardSx,
+    masterDetailTabbedCardContentSx,
+    masterDetailTabbedCardSx,
+    masterDetailTabsSx,
+} from '../common/masterDetailFormTheme';
 
 export const ROLE_CHOICES = [
     { id: 'Admin', name: 'Admin' },
@@ -104,17 +111,8 @@ function UserCompanyAccessFields() {
 
 function UserHeaderCard() {
     return (
-        <Card
-            variant="outlined"
-            sx={{
-                mb: 1.5,
-                width: '100%',
-                borderColor: '#dee2e6',
-                borderRadius: '4px',
-                boxShadow: 'none',
-            }}
-        >
-            <CardContent sx={{ p: '16px 20px !important', width: '100%', boxSizing: 'border-box' }}>
+        <Card variant="outlined" sx={masterDetailPrimaryCardSx}>
+            <CardContent sx={masterDetailPrimaryCardContentSx}>
                 <Grid container columnSpacing={3} alignItems="flex-start">
                     <Grid size={{ xs: 12, sm: 9 }}>
                         <FieldRow label="Name">
@@ -314,31 +312,14 @@ export function UserMainFormBlocks({ mode }: { mode: 'create' | 'edit' }) {
     return (
         <>
             <UserHeaderCard />
-            <Card
-                variant="outlined"
-                sx={{
-                    width: '100%',
-                    borderColor: '#dee2e6',
-                    borderRadius: '4px',
-                    boxShadow: 'none',
-                }}
-            >
-                <CardContent sx={{ p: '12px 16px 16px !important' }}>
+            <Card variant="outlined" sx={masterDetailTabbedCardSx}>
+                <CardContent sx={masterDetailTabbedCardContentSx}>
                     <Tabs
                         value={tab}
                         onChange={(_, v) => setTab(v)}
                         variant="scrollable"
                         scrollButtons="auto"
-                        sx={{
-                            minHeight: 36,
-                            '& .MuiTab-root': {
-                                minHeight: 36,
-                                py: 0.5,
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                fontSize: '0.8rem',
-                            },
-                        }}
+                        sx={masterDetailTabsSx}
                     >
                         <Tab label="Access rights" />
                         <Tab label="Preferences" />

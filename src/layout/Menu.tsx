@@ -19,6 +19,16 @@ import BusinessIcon from '@mui/icons-material/Business';
 import GavelIcon from '@mui/icons-material/Gavel';
 import PercentIcon from '@mui/icons-material/Percent';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import SecurityIcon from '@mui/icons-material/Security';
+
+import { useCanAccess } from '../auth/useCanAccess';
+import { useResolvedActiveAppId } from '../apps/useResolvedActiveAppId';
+import {
+    ACCOUNTING_SUITE_APP_ID,
+    SETTINGS_APP_ID,
+} from '../apps/appsRegistry';
+import { SETTINGS_SECURITY_GROUPS_LIST_PATH, SETTINGS_USERS_LIST_PATH } from '../apps/workspacePaths';
 
 type MenuName = 'menuCatalog';
 
@@ -29,8 +39,12 @@ const Menu = ({ dense = false }: MenuProps) => {
     const translate = useTranslate();
     const [open] = useSidebarState();
     const { identity } = useGetIdentity();
+    const activeAppId = useResolvedActiveAppId();
     const companyActive =
         (identity as { companyIsActivated?: boolean } | undefined)?.companyIsActivated !== false;
+
+    const canSecurityGroups = useCanAccess(SETTINGS_APP_ID, 'securityGroups', 'read');
+    const canUsers = useCanAccess(SETTINGS_APP_ID, 'users', 'read');
 
     const handleToggle = (menu: MenuName) => {
         setState(s => ({ ...s, [menu]: !s[menu] }));
@@ -54,7 +68,39 @@ const Menu = ({ dense = false }: MenuProps) => {
             })}
         >
             <DashboardMenuItem />
-            {!companyActive ? null : (
+            {!companyActive ? null : activeAppId === SETTINGS_APP_ID ? (
+                <>
+                    {canUsers ? (
+                        <MenuItemLink
+                            to={SETTINGS_USERS_LIST_PATH}
+                            state={{ _scrollToTop: true }}
+                            primaryText={translate(`resources.users.name`, {
+                                smart_count: 2,
+                                _: 'Users',
+                            })}
+                            leftIcon={<PersonOutlineIcon />}
+                            dense={dense}
+                        />
+                    ) : null}
+                    {canSecurityGroups ? (
+                        <MenuItemLink
+                            to={SETTINGS_SECURITY_GROUPS_LIST_PATH}
+                            state={{ _scrollToTop: true }}
+                            primaryText={translate('shell.settings.security_groups', { _: 'Security groups' })}
+                            leftIcon={<SecurityIcon />}
+                            dense={dense}
+                        />
+                    ) : null}
+                </>
+            ) : activeAppId === ACCOUNTING_SUITE_APP_ID ? (
+                <MenuItemLink
+                    to="/glChartAccounts"
+                    state={{ _scrollToTop: true }}
+                    primaryText={translate('shell.accounting.chart_of_accounts')}
+                    leftIcon={<AccountBalanceIcon />}
+                    dense={dense}
+                />
+            ) : (
                 <>
             <MenuItemLink
                 to="/fbrInvoices"
@@ -104,16 +150,6 @@ const Menu = ({ dense = false }: MenuProps) => {
                         smart_count: 1,
                     })}
                     leftIcon={<BusinessIcon />}
-                    dense={dense}
-                />
-                <MenuItemLink
-                    to="/users"
-                    state={{ _scrollToTop: true }}
-                    primaryText={translate(`resources.users.name`, {
-                        smart_count: 2,
-                        _: 'Users',
-                    })}
-                    leftIcon={<PersonOutlineIcon />}
                     dense={dense}
                 />
                 <MenuItemLink

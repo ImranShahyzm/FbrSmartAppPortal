@@ -14,6 +14,7 @@ import {
     useUnselectAll,
     type Identifier,
 } from 'react-admin';
+import { FbrPillChip } from '../common/fbrPillChip';
 import {
     Box,
     Button,
@@ -312,8 +313,7 @@ function OdooListActions() {
                 p: 0,
                 minHeight: 'unset',
                 flexDirection: 'column',
-                // ── Odoo-style top spacing ────────────────────────────────
-                pt: '12px',
+                pt: { xs: '4px', md: '12px' },
             }}
         >
             <Box
@@ -854,20 +854,8 @@ function FbrInvoiceStatusChip({ record }: { record: any }) {
         border: '#bdbdbd',
     };
     return (
-        <Chip
-            size="small"
-            label={cfg.label}
-            sx={{
-                height: 24,
-                borderRadius: '999px',
-                fontWeight: 700,
-                fontSize: 11,
-                bgcolor: cfg.bg,
-                color: cfg.color,
-                border: `1px solid ${cfg.border}`,
-                letterSpacing: '0.02em',
-                '& .MuiChip-label': { px: '10px', py: 0 },
-            }}
+        <FbrPillChip
+            tone={{ label: cfg.label, bg: cfg.bg, color: cfg.color, border: cfg.border }}
         />
     );
 }

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using FbrSmartApp.Api.Auth;
 using FbrSmartApp.Api.Data;
 using FbrSmartApp.Api.Models;
@@ -15,17 +16,32 @@ public sealed class TokenService
 {
     private readonly AppDbContext _db;
     private readonly AuthOptions _options;
+    private readonly EffectivePermissionsService _effectivePermissions;
 
     public const string RefreshTokenCookieName = "refreshToken";
 
-    public TokenService(AppDbContext db, IOptions<AuthOptions> options)
+    public TokenService(
+        AppDbContext db,
+        IOptions<AuthOptions> options,
+        EffectivePermissionsService effectivePermissions)
     {
         _db = db;
         _options = options.Value;
+        _effectivePermissions = effectivePermissions;
     }
 
-    public string CreateAccessToken(User user, DateTime utcNow)
+    public async Task<string> CreateAccessTokenAsync(User user, DateTime utcNow, CancellationToken ct)
     {
+        var perms = await _effectivePermissions.ComputeEffectivePermissionsAsync(user, ct);
+        var appIds = PermissionCatalog.AllowedAppIdsFromPermissions(perms);
+
+        var tracked = await _db.Users.FirstOrDefaultAsync(u => u.Id == user.Id, ct);
+        if (tracked is not null)
+        {
+            tracked.PermissionsJson = JsonSerializer.Serialize(perms);
+            await _db.SaveChangesAsync(ct);
+        }
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -35,6 +51,11 @@ public sealed class TokenService
             new(ClaimTypes.Role, user.Role),
             new("companyId", user.CompanyId.ToString()),
         };
+
+        foreach (var p in perms)
+            claims.Add(new Claim(PermissionCatalog.ClaimPermission, p));
+        foreach (var appId in appIds)
+            claims.Add(new Claim(PermissionCatalog.ClaimAllowedApp, appId));
 
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.JwtSigningKey));
         var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);

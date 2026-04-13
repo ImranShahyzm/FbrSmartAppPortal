@@ -7,3 +7,7 @@ export const FORM_SAVE_FBR_INVOICE = 'fbrInvoiceFormSave';
 export const FORM_SAVE_FBR_SALES_TAX_RATE = 'fbrSalesTaxRateFormSave';
 export const FORM_SAVE_FBR_SCENARIO = 'fbrScenarioFormSave';
 export const FORM_SAVE_USER = 'userFormSave';
+export const FORM_SAVE_GL_CHART_ACCOUNT = 'glChartAccountFormSave';
+export const FORM_SAVE_SECURITY_GROUP = 'securityGroupFormSave';
+export const FORM_SAVE_GL_VOUCHER_TYPE = 'glVoucherTypeFormSave';
+export const FORM_SAVE_GL_JOURNAL_VOUCHER = 'glJournalVoucherFormSave';

@@ -1,6 +1,9 @@
+using FbrSmartApp.Api;
+
 namespace FbrSmartApp.Api.Models;
 
 /// <summary>FBR / sales invoice header (master).</summary>
+[RecordRuleEntity("fbr", "fbrInvoices")]
 public sealed class FbrInvoice
 {
     public Guid Id { get; set; } = Guid.NewGuid();

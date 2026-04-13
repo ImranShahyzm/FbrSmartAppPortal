@@ -6,6 +6,8 @@ using FbrSmartApp.Api.Auth;
 using FbrSmartApp.Api.Data;
 using FbrSmartApp.Api.Middleware;
 using FbrSmartApp.Api.Services;
+using FbrSmartApp.Api.Services.RecordRules;
+using Microsoft.AspNetCore.Authorization;
 using FbrSmartApp.Api.Services.Fbr;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -111,6 +113,14 @@ builder.Services
         };
     });
 
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<RecordRulesUserVersionCache>();
+builder.Services.AddScoped<EffectivePermissionsService>();
+builder.Services.AddScoped<RecordRulesService>();
+builder.Services.AddScoped<RecordRuleFieldDiscoveryService>();
+builder.Services.AddScoped<AppRecordMessageService>();
 builder.Services.AddAuthorization();
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -194,6 +204,7 @@ app.Use(async (ctx, next) =>
 });
 
 app.UseAuthentication();
+app.UseMiddleware<ActiveAppHeaderMiddleware>();
 app.UseMiddleware<CompanyActivationMiddleware>();
 app.UseAuthorization();
 

@@ -1,6 +1,8 @@
 using System.Net.Mail;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FbrSmartApp.Api.Data;
 using FbrSmartApp.Api.Models;
 using FbrSmartApp.Api.Services;
@@ -18,6 +20,7 @@ public sealed class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly PasswordHasher _hasher;
     private readonly TokenService _tokens;
+    private readonly EffectivePermissionsService _effectivePermissions;
     private readonly IWebHostEnvironment _env;
     private readonly IRegistrationEmailSender _registrationEmail;
 
@@ -25,12 +28,14 @@ public sealed class AuthController : ControllerBase
         AppDbContext db,
         PasswordHasher hasher,
         TokenService tokens,
+        EffectivePermissionsService effectivePermissions,
         IWebHostEnvironment env,
         IRegistrationEmailSender registrationEmail)
     {
         _db = db;
         _hasher = hasher;
         _tokens = tokens;
+        _effectivePermissions = effectivePermissions;
         _env = env;
         _registrationEmail = registrationEmail;
     }
@@ -58,7 +63,7 @@ public sealed class AuthController : ControllerBase
             .Select(c => new { c.Title, c.IsActivated })
             .FirstOrDefaultAsync(ct);
 
-        var accessToken = _tokens.CreateAccessToken(user, utcNow);
+        var accessToken = await _tokens.CreateAccessTokenAsync(user, utcNow, ct);
         var (rawRefresh, refreshHash, refreshExpiresAtUtc) =
             await _tokens.CreateAndStoreRefreshTokenAsync(user, utcNow, ct);
 
@@ -67,16 +72,11 @@ public sealed class AuthController : ControllerBase
         return Ok(new LoginResponse
         {
             AccessToken = accessToken,
-            Identity = new IdentityResponse
-            {
-                Id = user.Id.ToString(),
-                FullName = user.FullName,
-                Role = user.Role,
-                CompanyId = user.CompanyId,
-                CompanyName = companyRow?.Title ?? "",
-                CompanyIsActivated = companyRow?.IsActivated ?? true,
-                ProfileImage = user.ProfileImage,
-            },
+            Identity = await BuildIdentityResponseAsync(
+                user,
+                companyRow?.Title ?? "",
+                companyRow?.IsActivated ?? true,
+                ct),
         });
     }
 
@@ -93,7 +93,7 @@ public sealed class AuthController : ControllerBase
 
         var (user, token) = validated.Value;
 
-        var accessToken = _tokens.CreateAccessToken(user, utcNow);
+        var accessToken = await _tokens.CreateAccessTokenAsync(user, utcNow, ct);
         var (newRaw, newHash, newExpires) = await _tokens.CreateAndStoreRefreshTokenAsync(user, utcNow, ct);
 
         await _tokens.RotateRefreshTokenAsync(token.TokenHash, newHash, utcNow, ct);
@@ -136,16 +136,11 @@ public sealed class AuthController : ControllerBase
             .Select(c => new { c.Title, c.IsActivated })
             .FirstOrDefaultAsync(ct);
 
-        return Ok(new IdentityResponse
-        {
-            Id = user.Id.ToString(),
-            FullName = user.FullName,
-            Role = user.Role,
-            CompanyId = user.CompanyId,
-            CompanyName = companyRow?.Title ?? "",
-            CompanyIsActivated = companyRow?.IsActivated ?? true,
-            ProfileImage = user.ProfileImage,
-        });
+        return Ok(await BuildIdentityResponseAsync(
+            user,
+            companyRow?.Title ?? "",
+            companyRow?.IsActivated ?? true,
+            ct));
     }
 
     [AllowAnonymous]
@@ -250,6 +245,8 @@ public sealed class AuthController : ControllerBase
                 IsActive = true,
                 AllowedCompanyIdsJson = $"[{company.Id}]",
                 DefaultCompanyId = company.Id,
+                AccessRightsJson =
+                    """{"modules":{"accounting":{"chartOfAccounts":{"read":true,"write":true}}}}""",
             };
             _db.Users.Add(user);
             await _db.SaveChangesAsync(ct);
@@ -343,6 +340,43 @@ public sealed class AuthController : ControllerBase
         });
     }
 
+    private async Task<IdentityResponse> BuildIdentityResponseAsync(
+        User user,
+        string companyName,
+        bool companyIsActivated,
+        CancellationToken ct)
+    {
+        var perms = await _effectivePermissions.ComputeEffectivePermissionsAsync(user, ct);
+        var apps = PermissionCatalog.AllowedAppIdsFromPermissions(perms);
+        return new IdentityResponse
+        {
+            Id = user.Id.ToString(),
+            FullName = user.FullName,
+            Role = user.Role,
+            CompanyId = user.CompanyId,
+            CompanyName = companyName,
+            CompanyIsActivated = companyIsActivated,
+            ProfileImage = user.ProfileImage,
+            AccessRights = TryParseAccessRightsJson(user.AccessRightsJson),
+            Apps = apps.ToList(),
+            Permissions = perms.ToList(),
+        };
+    }
+
+    private static JsonElement? TryParseAccessRightsJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public sealed class LoginRequest
     {
         public string? Username { get; set; }
@@ -369,6 +403,13 @@ public sealed class AuthController : ControllerBase
         public string CompanyName { get; set; } = "";
         public bool CompanyIsActivated { get; set; } = true;
         public string? ProfileImage { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? AccessRights { get; set; }
+
+        public List<string> Apps { get; set; } = [];
+
+        public List<string> Permissions { get; set; } = [];
     }
 
     public sealed class RegisterCompanyRequest

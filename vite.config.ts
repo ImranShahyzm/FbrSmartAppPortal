@@ -55,6 +55,11 @@ export default defineConfig(async ({ mode }) => {
         server: {
             port: 8000,
             open: true,
+            // Same-origin `/api` and `/uploads` in dev (see `src/api/apiBaseUrl.ts`); avoids CORS and matches production relative URLs.
+            proxy: {
+                '/api': 'http://localhost:5227',
+                '/uploads': 'http://localhost:5227',
+            },
         },
         base: './',
         esbuild: {
