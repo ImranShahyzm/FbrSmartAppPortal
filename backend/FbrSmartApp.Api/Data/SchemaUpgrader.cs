@@ -1375,6 +1375,65 @@ public static class SchemaUpgrader
                 ALTER TABLE dbo.GLvDetail ADD PartyID INT NULL;
             IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'FbrSalesTaxRateIdsJson') IS NULL
                 ALTER TABLE dbo.GLvDetail ADD FbrSalesTaxRateIdsJson NVARCHAR(500) NULL;
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvMAIN', 'LogSourceID') IS NULL
+                ALTER TABLE dbo.GLvMAIN ADD LogSourceID INT NOT NULL CONSTRAINT DF_GLvMAIN_LogSourceID DEFAULT (0);
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'IsLog') IS NULL
+                ALTER TABLE dbo.GLvDetail ADD IsLog BIT NOT NULL CONSTRAINT DF_GLvDetail_IsLog DEFAULT (0);
+            """,
+            ct
+        );
+
+        // PES scheme master/detail (trimmed; no FKs to tables not shipped in this app)
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_Pes_SchemeInfo', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_Pes_SchemeInfo(
+                    SchemeID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_Pes_SchemeInfo PRIMARY KEY,
+                    CompanyID INT NULL,
+                    Title NVARCHAR(500) NULL,
+                    ShortCode NVARCHAR(50) NULL,
+                    LogSourceID INT NOT NULL CONSTRAINT DF_gen_Pes_SchemeInfo_LogSourceID DEFAULT (0),
+                    SchemeApproval TINYINT NOT NULL CONSTRAINT DF_gen_Pes_SchemeInfo_SchemeApproval DEFAULT (0),
+                    IsTaxable BIT NOT NULL CONSTRAINT DF_gen_Pes_SchemeInfo_IsTaxable DEFAULT (0),
+                    SwitchType INT NOT NULL CONSTRAINT DF_gen_Pes_SchemeInfo_SwitchType DEFAULT (0)
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_Pes_SchemeDetail', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_Pes_SchemeDetail(
+                    SchemeDetailID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_Pes_SchemeDetail PRIMARY KEY,
+                    SchemeID INT NOT NULL,
+                    ItemId INT NULL,
+                    Qauntity DECIMAL(18, 3) NULL,
+                    Rate DECIMAL(18, 3) NULL,
+                    Discount DECIMAL(18, 3) NULL,
+                    NetAmount DECIMAL(18, 3) NULL,
+                    Remarks VARCHAR(300) NULL,
+                    IsLog BIT NOT NULL CONSTRAINT DF_gen_Pes_SchemeDetail_IsLog DEFAULT (0),
+                    CONSTRAINT FK_gen_Pes_SchemeDetail_SchemeInfo FOREIGN KEY (SchemeID) REFERENCES dbo.gen_Pes_SchemeInfo(SchemeID)
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvDetail', 'SchemeId') IS NULL
+                ALTER TABLE dbo.GLvDetail ADD SchemeId INT NULL;
+            IF OBJECT_ID('dbo.GLvDetail', 'U') IS NOT NULL
+              AND COL_LENGTH('dbo.GLvDetail', 'SchemeId') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.indexes WHERE name = N'IX_GLvDetail_SchemeId'
+                    AND object_id = OBJECT_ID(N'dbo.GLvDetail'))
+                CREATE INDEX IX_GLvDetail_SchemeId ON dbo.GLvDetail(SchemeId);
             """,
             ct
         );
@@ -1398,6 +1457,80 @@ public static class SchemaUpgrader
                     MentionedUserIdsJson NVARCHAR(MAX) NULL
                 );
                 CREATE INDEX IX_AppRecordMessages_Target ON dbo.AppRecordMessages(CompanyId, ResourceKey, RecordKey);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvMAIN', 'BankCashGlAccountId') IS NULL
+            BEGIN
+                ALTER TABLE dbo.GLvMAIN ADD BankCashGlAccountId INT NULL;
+            END
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL
+              AND COL_LENGTH('dbo.GLvMAIN', 'BankCashGlAccountId') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_GLvMAIN_BankCash_GLChart'
+                    AND parent_object_id = OBJECT_ID(N'dbo.GLvMAIN'))
+              AND OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NOT NULL
+            BEGIN
+                ALTER TABLE dbo.GLvMAIN ADD CONSTRAINT FK_GLvMAIN_BankCash_GLChart
+                    FOREIGN KEY (BankCashGlAccountId) REFERENCES dbo.GLChartOFAccount(GLCAID);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_BankInformation', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_BankInformation(
+                    BankInfoID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_BankInformation PRIMARY KEY,
+                    EntryUserID INT NULL,
+                    EntryUserDateTime DATETIME NULL,
+                    ModifyUserID INT NULL,
+                    ModifyUserDateTime DATETIME NULL,
+                    CompanyID INT NULL,
+                    BankAccountTitle NVARCHAR(MAX) NULL,
+                    GLCAID INT NULL,
+                    BankAccountNumber NVARCHAR(MAX) NULL,
+                    BankName NVARCHAR(MAX) NULL,
+                    BankBranchCode NVARCHAR(50) NULL,
+                    BankAddress NVARCHAR(MAX) NULL
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_BankInformation', 'U') IS NOT NULL
+              AND COL_LENGTH('dbo.gen_BankInformation', 'BankAddress') IS NULL
+            BEGIN
+                ALTER TABLE dbo.gen_BankInformation ADD BankAddress NVARCHAR(MAX) NULL;
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_CashInformation', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_CashInformation(
+                    CashInfoID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_CashInformation PRIMARY KEY,
+                    EntryUserID INT NULL,
+                    EntryUserDateTime DATETIME NULL,
+                    ModifyUserID INT NULL,
+                    ModifyUserDateTime DATETIME NULL,
+                    CompanyID INT NULL,
+                    AccountTitle NVARCHAR(50) NULL,
+                    CashAccount INT NULL,
+                    BranchID INT NULL
+                );
             END
             """,
             ct

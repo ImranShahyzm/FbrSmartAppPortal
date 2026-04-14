@@ -95,6 +95,33 @@ function computeLineTax(l: GlJournalLineRow | undefined, taxPctById: Map<number,
     return sum;
 }
 
+/** Minimum column widths (px) — must stay in sync with header `TableCell` widths; drives horizontal scroll on narrow viewports. */
+const GRID_COL_MIN = {
+    drag: 32,
+    account: 180,
+    narration: 140,
+    taxes: 160,
+    partner: 160,
+    debit: 110,
+    credit: 110,
+    lineTax: 110,
+    actions: 40,
+} as const;
+
+function journalLinesTableMinWidth(columns: Record<ColumnKey, boolean>): number {
+    return (
+        GRID_COL_MIN.drag +
+        GRID_COL_MIN.account +
+        GRID_COL_MIN.narration +
+        (columns.taxes ? GRID_COL_MIN.taxes : 0) +
+        (columns.partner_ref ? GRID_COL_MIN.partner : 0) +
+        GRID_COL_MIN.debit +
+        GRID_COL_MIN.credit +
+        (columns.line_tax_amount ? GRID_COL_MIN.lineTax : 0) +
+        GRID_COL_MIN.actions
+    );
+}
+
 const journalGridThSx = {
     ...excelGridBodyCellSx,
     fontWeight: 700,
@@ -607,12 +634,24 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
                 </Box>
             </Box>
 
-            <TableContainer sx={excelGridTableContainerSx}>
+            <TableContainer
+                sx={{
+                    ...excelGridTableContainerSx,
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarGutter: 'stable',
+                    '&::-webkit-scrollbar': { height: 6 },
+                }}
+            >
                 <Table
                     size="small"
                     stickyHeader
                     sx={{
                         ...excelGridTableSx,
+                        minWidth: journalLinesTableMinWidth(columns),
+                        width: '100%',
                         '& .MuiTableHead-root .MuiTableCell-root': {
                             py: '10px',
                             minHeight: 40,
@@ -623,37 +662,37 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
                     <TableHead>
                         <TableRow>
                             <TableCell
-                                width={32}
+                                width={GRID_COL_MIN.drag}
                                 sx={{ ...journalGridThSx, fontWeight: 600, bgcolor: 'background.paper' }}
                             />
-                            <TableCell sx={{ ...journalGridThSx, minWidth: 180 }}>
+                            <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.account }}>
                                 {translate('resources.glJournalVouchers.fields.account')}
                             </TableCell>
-                            <TableCell sx={{ ...journalGridThSx, minWidth: 140 }}>
+                            <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.narration }}>
                                 {translate('resources.glJournalVouchers.fields.narration')}
                             </TableCell>
                             {columns.taxes ? (
-                                <TableCell sx={{ ...journalGridThSx, minWidth: 160 }}>
+                                <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.taxes }}>
                                     {translate('resources.glJournalVouchers.fields.taxes')}
                                 </TableCell>
                             ) : null}
                             {columns.partner_ref ? (
-                                <TableCell sx={{ ...journalGridThSx, minWidth: 160 }}>
+                                <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.partner }}>
                                     {translate('resources.glJournalVouchers.fields.partner')}
                                 </TableCell>
                             ) : null}
-                            <TableCell sx={{ ...journalGridThSx, width: 110 }} align="right">
+                            <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.debit }} align="right">
                                 {translate('resources.glJournalVouchers.fields.debit')}
                             </TableCell>
-                            <TableCell sx={{ ...journalGridThSx, width: 110 }} align="right">
+                            <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.credit }} align="right">
                                 {translate('resources.glJournalVouchers.fields.credit')}
                             </TableCell>
                             {columns.line_tax_amount ? (
-                                <TableCell sx={{ ...journalGridThSx, width: 110 }} align="right">
+                                <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.lineTax }} align="right">
                                     {translate('resources.glJournalVouchers.fields.line_tax_amount')}
                                 </TableCell>
                             ) : null}
-                            <TableCell sx={{ ...journalGridThSx, width: 40 }} />
+                            <TableCell sx={{ ...journalGridThSx, width: GRID_COL_MIN.actions, minWidth: GRID_COL_MIN.actions }} />
                         </TableRow>
                     </TableHead>
                     <TableBody>

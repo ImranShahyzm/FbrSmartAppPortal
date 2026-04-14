@@ -25,6 +25,10 @@ export function AccountingLayout(props: LayoutProps) {
                     paddingTop: 0,
                     marginTop: 0,
                 },
+                [`& .RaLayout-main`]: {
+                    paddingTop: 0,
+                    marginTop: 0,
+                },
             })}
         />
     );

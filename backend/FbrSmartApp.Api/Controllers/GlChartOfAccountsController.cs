@@ -84,6 +84,41 @@ public sealed class GlChartOfAccountsController : ControllerBase
             }
         }
 
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            try
+            {
+                using var doc2 = JsonDocument.Parse(filter);
+                if (doc2.RootElement.TryGetProperty("bankCashLinkKind", out var bckEl) &&
+                    bckEl.ValueKind == JsonValueKind.String)
+                {
+                    var kind = bckEl.GetString()?.Trim().ToLowerInvariant();
+                    if (kind == "bank")
+                    {
+                        var ids = await _db.GenBankInformations.AsNoTracking()
+                            .Where(b => b.CompanyId == companyId && b.GlcaId != null)
+                            .Select(b => b.GlcaId!.Value)
+                            .Distinct()
+                            .ToListAsync(ct);
+                        query = ids.Count == 0 ? query.Where(x => false) : query.Where(x => ids.Contains(x.Id));
+                    }
+                    else if (kind == "cash")
+                    {
+                        var ids = await _db.GenCashInformations.AsNoTracking()
+                            .Where(b => b.CompanyId == companyId && b.CashAccount != null)
+                            .Select(b => b.CashAccount!.Value)
+                            .Distinct()
+                            .ToListAsync(ct);
+                        query = ids.Count == 0 ? query.Where(x => false) : query.Where(x => ids.Contains(x.Id));
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // ignore
+            }
+        }
+
         query = ApplySort(query, sort);
 
         var total = await query.CountAsync(ct);

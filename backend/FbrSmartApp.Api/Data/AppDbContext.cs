@@ -42,6 +42,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<ApprovalStatus> ApprovalStatuses => Set<ApprovalStatus>();
     public DbSet<GlVoucherMain> GlVoucherMains => Set<GlVoucherMain>();
     public DbSet<GlVoucherDetail> GlVoucherDetails => Set<GlVoucherDetail>();
+    public DbSet<GenBankInformation> GenBankInformations => Set<GenBankInformation>();
+    public DbSet<GenCashInformation> GenCashInformations => Set<GenCashInformation>();
     public DbSet<AppRecordMessage> AppRecordMessages => Set<AppRecordMessage>();
     public DbSet<SecurityGroup> SecurityGroups => Set<SecurityGroup>();
     public DbSet<UserSecurityGroup> UserSecurityGroups => Set<UserSecurityGroup>();
@@ -579,6 +581,32 @@ public sealed class AppDbContext : DbContext
                 .WithOne(x => x.VoucherMain!)
                 .HasForeignKey(x => x.VoucherMainId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.BankCashGlAccount)
+                .WithMany()
+                .HasForeignKey(x => x.BankCashGlAccountId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<GenBankInformation>(entity =>
+        {
+            entity.ToTable("gen_BankInformation");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.BankBranchCode).HasMaxLength(50);
+            entity.HasOne(x => x.GlAccount)
+                .WithMany()
+                .HasForeignKey(x => x.GlcaId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<GenCashInformation>(entity =>
+        {
+            entity.ToTable("gen_CashInformation");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.AccountTitle).HasMaxLength(50);
+            entity.HasOne(x => x.GlAccount)
+                .WithMany()
+                .HasForeignKey(x => x.CashAccount)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<GlVoucherDetail>(entity =>

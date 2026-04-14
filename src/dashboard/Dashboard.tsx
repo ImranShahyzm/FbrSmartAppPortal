@@ -38,7 +38,10 @@ const styles = {
     flexColumn: { display: 'flex', flexDirection: 'column' },
     leftCol: { flex: 1, marginRight: '0.5em' },
     rightCol: { flex: 1, marginLeft: '0.5em' },
+    /** Vertical sections below the welcome banner (keep top margin — not used for the banner itself). */
     singleCol: { marginTop: '1em', marginBottom: '1em' },
+    /** Welcome banner only: no extra top margin (AppShell provides ~4px under the navbar). */
+    welcomeBannerWrap: { marginBottom: '1em' },
 };
 
 const Spacer = () => <span style={{ width: '1em' }} />;
@@ -133,11 +136,21 @@ function PendingCompanyDashboard() {
                         <PendingValidations value={pendingValidations} />
                         <VerticalSpacer />
                         <PendingPostings value={pendingPostings} />
+                        <div style={styles.singleCol}>
+                            <Card>
+                                <CardHeader title={<Translate i18nKey="pos.dashboard.month_history" />} />
+                                <CardContent>
+                                    <Suspense fallback={<Skeleton height={300} />}>
+                                        <OrderChart orders={recentOrders} />
+                                    </Suspense>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 </div>
             ) : isSmall ? (
                 <div style={styles.flexColumn as CSSProperties}>
-                    <div style={styles.singleCol}>
+                    <div style={styles.welcomeBannerWrap}>
                         <Welcome />
                     </div>
                     <div style={styles.flex}>
@@ -270,11 +283,25 @@ function ActiveDashboard() {
                 <PendingValidations value={pendingValidations} />
                 <VerticalSpacer />
                 <PendingPostings value={pendingPostings} />
+                <div style={styles.singleCol}>
+                    <Card>
+                        <CardHeader
+                            title={
+                                <Translate i18nKey="pos.dashboard.month_history" />
+                            }
+                        />
+                        <CardContent>
+                            <Suspense fallback={<Skeleton height={300} />}>
+                                <OrderChart orders={recentOrders} />
+                            </Suspense>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
             ) : isSmall ? (
         <div style={styles.flexColumn as CSSProperties}>
-            <div style={styles.singleCol}>
+            <div style={styles.welcomeBannerWrap}>
                 <Welcome />
             </div>
             <div style={styles.flex}>

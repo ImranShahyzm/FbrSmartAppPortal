@@ -1,0 +1,184 @@
+using System.Security.Claims;
+using System.Text.Json;
+using FbrSmartApp.Api.Auth;
+using FbrSmartApp.Api.Data;
+using FbrSmartApp.Api.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace FbrSmartApp.Api.Controllers;
+
+[ApiController]
+[Route("api/genCashInformation")]
+[Authorize]
+public sealed class GenCashInformationController : ControllerBase
+{
+    private readonly AppDbContext _db;
+
+    public GenCashInformationController(AppDbContext db)
+    {
+        _db = db;
+    }
+
+    [HttpGet]
+    [HasPermission("accounting.genCashInformation.read")]
+    public async Task<IActionResult> GetList([FromQuery] string? range, [FromQuery] string? filter, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        var query = _db.GenCashInformations.AsNoTracking().Where(x => x.CompanyId == companyId);
+
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(filter);
+                if (doc.RootElement.TryGetProperty("q", out var qEl))
+                {
+                    var q = qEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(q))
+                    {
+                        var t = q.Trim();
+                        query = query.Where(x =>
+                            x.AccountTitle != null && x.AccountTitle.Contains(t));
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                /* ignore */
+            }
+        }
+
+        query = query.OrderBy(x => x.AccountTitle ?? "").ThenBy(x => x.Id);
+        var total = await query.CountAsync(ct);
+        var from = 0;
+        var to = Math.Min(24, Math.Max(total - 1, 0));
+        if (!string.IsNullOrWhiteSpace(range))
+        {
+            try
+            {
+                var arr = JsonSerializer.Deserialize<int[]>(range);
+                if (arr is { Length: >= 2 })
+                {
+                    from = Math.Max(0, arr[0]);
+                    to = Math.Max(from, arr[1]);
+                }
+            }
+            catch (JsonException)
+            {
+                /* defaults */
+            }
+        }
+
+        var take = Math.Min(to - from + 1, 1000);
+        var rows = await query.Skip(from).Take(take).ToListAsync(ct);
+        var dtos = rows.Select(ToDto).ToList();
+
+        Response.Headers.ContentRange =
+            $"genCashInformation {from}-{from + Math.Max(dtos.Count - 1, 0)}/{total}";
+        Response.Headers.AccessControlExposeHeaders = "Content-Range";
+        return Ok(dtos);
+    }
+
+    [HttpGet("{id:int}")]
+    [HasPermission("accounting.genCashInformation.read")]
+    public async Task<IActionResult> GetOne(int id, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        var x = await _db.GenCashInformations.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId, ct);
+        if (x is null) return NotFound();
+        return Ok(ToDto(x));
+    }
+
+    [HttpPost]
+    [HasPermission("accounting.genCashInformation.create")]
+    public async Task<IActionResult> Create([FromBody] GenCashInformationWriteDto body, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        if (body.cashAccount is null or <= 0)
+            return BadRequest(new { message = "Cash account (chart GL id) is required." });
+
+        var glOk = await _db.GlChartOfAccounts.AsNoTracking()
+            .AnyAsync(a => a.Id == body.cashAccount && a.CompanyId == companyId, ct);
+        if (!glOk)
+            return BadRequest(new { message = "Invalid chart account for this company." });
+
+        var now = DateTime.UtcNow;
+        var entity = new GenCashInformation
+        {
+            CompanyId = companyId,
+            AccountTitle = string.IsNullOrWhiteSpace(body.accountTitle) ? null : body.accountTitle.Trim(),
+            CashAccount = body.cashAccount,
+            BranchId = body.branchId,
+            EntryUserDateTime = now,
+        };
+        _db.GenCashInformations.Add(entity);
+        await _db.SaveChangesAsync(ct);
+        return CreatedAtAction(nameof(GetOne), new { id = entity.Id }, ToDto(entity));
+    }
+
+    [HttpPut("{id:int}")]
+    [HasPermission("accounting.genCashInformation.write")]
+    public async Task<IActionResult> Update(int id, [FromBody] GenCashInformationWriteDto body, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        var entity = await _db.GenCashInformations.FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId, ct);
+        if (entity is null) return NotFound();
+
+        if (body.cashAccount is null or <= 0)
+            return BadRequest(new { message = "Cash account (chart GL id) is required." });
+        var glOk = await _db.GlChartOfAccounts.AsNoTracking()
+            .AnyAsync(a => a.Id == body.cashAccount && a.CompanyId == companyId, ct);
+        if (!glOk)
+            return BadRequest(new { message = "Invalid chart account for this company." });
+
+        entity.AccountTitle = string.IsNullOrWhiteSpace(body.accountTitle) ? null : body.accountTitle.Trim();
+        entity.CashAccount = body.cashAccount;
+        entity.BranchId = body.branchId;
+        entity.ModifyUserDateTime = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return await GetOne(id, ct);
+    }
+
+    [HttpDelete("{id:int}")]
+    [HasPermission("accounting.genCashInformation.delete")]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        var entity = await _db.GenCashInformations.FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId, ct);
+        if (entity is null) return NotFound();
+        _db.GenCashInformations.Remove(entity);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    private static object ToDto(GenCashInformation x) => new
+    {
+        id = x.Id,
+        companyId = x.CompanyId,
+        accountTitle = x.AccountTitle,
+        cashAccount = x.CashAccount,
+        branchId = x.BranchId,
+        entryUserId = x.EntryUserId,
+        entryUserDateTime = x.EntryUserDateTime,
+        modifyUserId = x.ModifyUserId,
+        modifyUserDateTime = x.ModifyUserDateTime,
+    };
+
+    private int GetCompanyIdOrThrow()
+    {
+        var raw = User.FindFirst("companyId")?.Value;
+        if (!int.TryParse(raw, out var companyId))
+            throw new UnauthorizedAccessException("Missing companyId claim.");
+        return companyId;
+    }
+}
+
+public sealed class GenCashInformationWriteDto
+{
+    public int? cashAccount { get; set; }
+    public string? accountTitle { get; set; }
+    public int? branchId { get; set; }
+}

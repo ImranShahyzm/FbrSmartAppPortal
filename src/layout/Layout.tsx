@@ -11,7 +11,7 @@ function EmptyAppBar() {
 }
 
 /**
- * Odoo shell AppBar uses a wrapping Toolbar below `md` (two rows). RA Layout's
+ * Odoo shell AppBar uses a wrapping Toolbar below `lg` (two rows). RA Layout's
  * default appFrame marginTop only fits a single bar row, so list toolbars
  * (e.g. FBR Invoices) slide under the fixed header on phones.
  */
@@ -37,6 +37,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                               marginTop: '0 !important',
                           },
                           [`& .RaLayout-content`]: {
+                              paddingTop: 0,
+                              marginTop: 0,
+                          },
+                          [`& .RaLayout-main`]: {
                               paddingTop: 0,
                               marginTop: 0,
                           },

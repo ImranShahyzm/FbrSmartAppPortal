@@ -18,11 +18,14 @@ export function AppShell(props: { children: React.ReactNode }) {
         >
             <AppBar />
             <Box
+                component="main"
                 sx={{
                     flex: 1,
                     minHeight: 0,
                     overflow: 'auto',
                     WebkitOverflowScrolling: 'touch',
+                    // Hairline gap under the top bar (ERP-style tight header).
+                    pt: '2px',
                 }}
             >
                 <SyncActiveAppFromPath />

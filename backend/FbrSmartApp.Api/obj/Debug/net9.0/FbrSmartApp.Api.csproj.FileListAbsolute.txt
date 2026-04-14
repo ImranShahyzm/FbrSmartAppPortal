@@ -1,7 +1,6 @@
 E:\FbrSmartAppReact2\backend\FbrSmartApp.Api\bin\Debug\net9.0\appsettings.Development.json
 E:\FbrSmartAppReact2\backend\FbrSmartApp.Api\bin\Debug\net9.0\appsettings.json
 E:\FbrSmartAppReact2\backend\FbrSmartApp.Api\bin\Debug\net9.0\FbrSmartApp.Api.staticwebassets.endpoints.json
-E:\FbrSmartAppReact2\backend\FbrSmartApp.Api\bin\Debug\net9.0\FbrSmartApp.Api.exe
 E:\FbrSmartAppReact2\backend\FbrSmartApp.Api\bin\Debug\net9.0\FbrSmartApp.Api.deps.json
 E:\FbrSmartAppReact2\backend\FbrSmartApp.Api\bin\Debug\net9.0\FbrSmartApp.Api.runtimeconfig.json
 E:\FbrSmartAppReact2\backend\FbrSmartApp.Api\bin\Debug\net9.0\FbrSmartApp.Api.dll
@@ -529,3 +528,15 @@ E:\FbrSmartAppReact2\backend\FbrSmartApp.api\obj\Debug\net9.0\compressed\0sk5ih7
 E:\FbrSmartAppReact2\backend\FbrSmartApp.api\obj\Debug\net9.0\compressed\7bsqjkx279-7qqd3kz7mw.gz
 E:\FbrSmartAppReact2\backend\FbrSmartApp.api\obj\Debug\net9.0\compressed\7a6ev7g2ki-pb66gds1ca.gz
 E:\FbrSmartAppReact2\backend\FbrSmartApp.api\obj\Debug\net9.0\compressed\p13q7z087q-370498conn.gz
+E:\FbrSmartAppReact2\backend\FbrSmartapp.api\bin\Debug\net9.0\FbrSmartApp.Api.exe
+e:\FbrSmartAppReact2\backend\build-out\web.config
+e:\FbrSmartAppReact2\backend\build-out\appsettings.Development.json
+e:\FbrSmartAppReact2\backend\build-out\appsettings.json
+e:\FbrSmartAppReact2\backend\build-out\appsettings.Production.json
+e:\FbrSmartAppReact2\backend\build-out\FbrSmartApp.Api.staticwebassets.runtime.json
+e:\FbrSmartAppReact2\backend\build-out\FbrSmartApp.Api.staticwebassets.endpoints.json
+e:\FbrSmartAppReact2\backend\build-out\FbrSmartApp.Api.exe
+e:\FbrSmartAppReact2\backend\build-out\FbrSmartApp.Api.deps.json
+e:\FbrSmartAppReact2\backend\build-out\FbrSmartApp.Api.runtimeconfig.json
+e:\FbrSmartAppReact2\backend\build-out\FbrSmartApp.Api.dll
+e:\FbrSmartAppReact2\backend\build-out\FbrSmartApp.Api.pdb

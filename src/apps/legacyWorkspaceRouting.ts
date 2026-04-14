@@ -4,7 +4,16 @@ import { SETTINGS_APP_ID, workspaceRootPath } from './appsRegistry';
  * URL segments that exist only under the accounting workspace. Legacy paths like `/glChartAccounts`
  * always resolve to `/accounting/...`.
  */
-export const LEGACY_ACCOUNTING_ONLY_FIRST_SEGMENTS = new Set(['glChartAccounts', 'glJournalVouchers']);
+export const LEGACY_ACCOUNTING_ONLY_FIRST_SEGMENTS = new Set([
+    'glChartAccounts',
+    'glJournalVouchers',
+    'bankPayments',
+    'cashPayments',
+    'bankReceipts',
+    'cashReceipts',
+    'genBankInformation',
+    'genCashInformation',
+]);
 
 /**
  * URL segments that are FBR-workspace–specific (no accounting route registered). Legacy paths always

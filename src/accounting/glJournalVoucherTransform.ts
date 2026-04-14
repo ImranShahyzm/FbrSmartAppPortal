@@ -39,12 +39,17 @@ export function mapGlJournalVoucherToApiBody(data: Record<string, unknown>) {
               : new Date();
     const voucherDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+    const bc = data.bankCashGlAccountId;
+    const bankCashGlAccountId =
+        bc != null && bc !== '' && Number(bc) > 0 ? Number(bc) : null;
+
     return {
         voucherTypeId: Number(data.voucherTypeId) || 0,
         voucherDate: voucherDateStr,
         remarks: data.remarks != null ? String(data.remarks) : '',
         manualNo: data.manualNo != null ? String(data.manualNo) : '',
         branchId: data.branchId != null && data.branchId !== '' ? Number(data.branchId) : null,
+        bankCashGlAccountId,
         lines,
     };
 }
@@ -74,9 +79,14 @@ export function normalizeGlJournalVoucherRecord(row: Record<string, unknown>): R
               };
           })
         : [];
+    const bcRaw = row.bankCashGlAccountId ?? row.BankCashGlAccountId;
+    const bankCashGlAccountId =
+        bcRaw != null && bcRaw !== '' && Number(bcRaw) > 0 ? Number(bcRaw) : null;
+
     return {
         ...row,
         ...(id !== undefined ? { id } : {}),
+        bankCashGlAccountId,
         cancelled: Boolean(row.cancelled ?? row.Cancelled),
         approvalStatusCode: String(row.approvalStatusCode ?? row.ApprovalStatusCode ?? 'draft'),
         approvalStatusId: row.approvalStatusId ?? row.ApprovalStatusId,

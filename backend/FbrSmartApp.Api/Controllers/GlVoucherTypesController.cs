@@ -62,6 +62,29 @@ public sealed class GlVoucherTypesController : ControllerBase
                     query = query.Where(x => x.SystemType == systemType);
                 }
 
+                if (doc.RootElement.TryGetProperty("controlAccountTxnNature", out var natEl) &&
+                    natEl.ValueKind == JsonValueKind.Number &&
+                    natEl.TryGetInt32(out var txnNat))
+                {
+                    query = query.Where(x => x.ControlAccountTxnNature == txnNat);
+                }
+
+                List<int>? idsFilter = null;
+                if (doc.RootElement.TryGetProperty("ids", out var idsEl) && idsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var el in idsEl.EnumerateArray())
+                    {
+                        if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var vid))
+                        {
+                            idsFilter ??= new List<int>();
+                            idsFilter.Add(vid);
+                        }
+                    }
+                }
+
+                if (idsFilter is { Count: > 0 })
+                    query = query.Where(x => idsFilter.Contains(x.Id));
+
                 if (doc.RootElement.TryGetProperty("status", out var statusFilterEl) &&
                     statusFilterEl.ValueKind == JsonValueKind.String)
                 {

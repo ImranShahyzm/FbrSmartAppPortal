@@ -72,6 +72,8 @@ const CustomAppBar = () => {
                     boxShadow: 'none',
                     px: { xs: 0.5, sm: 1 },
                     pt: 0,
+                    pb: 0,
+                    mb: 0,
                 }}
             >
                 <Toolbar
@@ -80,8 +82,9 @@ const CustomAppBar = () => {
                     sx={{
                         px: 1,
                         minHeight: 48,
+                        minWidth: 0,
                         gap: 0.5,
-                        flexWrap: { xs: 'wrap', md: 'nowrap' },
+                        flexWrap: { xs: 'wrap', lg: 'nowrap' },
                         alignItems: 'center',
                         bgcolor: theme => (theme.vars || theme).palette.secondary.main,
                         borderRadius: 1.25,
@@ -123,8 +126,15 @@ const CustomAppBar = () => {
                         <TitlePortal />
                     </Box>
                     <OdooTopNav />
-                    <Box component="span" sx={{ flex: 1, minWidth: 8 }} />
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            flexShrink: 0,
+                            marginInlineStart: 'auto',
+                        }}
+                    >
                         {activeAppId === SETTINGS_APP_ID && canRecordRuleFieldSetup ? (
                             <Tooltip title="Record rule fields (developer)">
                                 <IconButton

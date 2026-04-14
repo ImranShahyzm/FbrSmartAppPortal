@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FbrSmartApp.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a1b6032945895594c00e0885742d9e184d1efdaf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c6b4c10da5b27cc5045ee61f1bd464651ef6bb6a")]
 [assembly: System.Reflection.AssemblyProductAttribute("FbrSmartApp.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FbrSmartApp.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

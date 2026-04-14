@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8ORsiL/y5CE=",
+  "dgSpecHash": "kHw3cS7IJeE=",
   "success": true,
-  "projectFilePath": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.api\\FbrSmartApp.Api.csproj",
+  "projectFilePath": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\123\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\123\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",

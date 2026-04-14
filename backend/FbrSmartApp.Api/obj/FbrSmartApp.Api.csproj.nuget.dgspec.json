@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.api\\FbrSmartApp.Api.csproj": {}
+    "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj": {}
   },
   "projects": {
-    "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.api\\FbrSmartApp.Api.csproj": {
+    "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.api\\FbrSmartApp.Api.csproj",
+        "projectUniqueName": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj",
         "projectName": "FbrSmartApp.Api",
-        "projectPath": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.api\\FbrSmartApp.Api.csproj",
+        "projectPath": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj",
         "packagesPath": "C:\\Users\\123\\.nuget\\packages\\",
-        "outputPath": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.api\\obj\\",
+        "outputPath": "E:\\FbrSmartAppReact2\\backend\\FbrSmartApp.Api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
