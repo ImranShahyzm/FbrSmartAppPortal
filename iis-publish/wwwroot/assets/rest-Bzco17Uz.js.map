@@ -1,0 +1,1 @@
+{"version":3,"file":"rest-Bzco17Uz.js","sources":["../../src/dataProvider/rest.ts"],"sourcesContent":["import simpleRestProvider from 'ra-data-simple-rest';\n\nexport default simpleRestProvider('https://demo.api.marmelab.com');\n"],"names":["rest","simpleRestProvider"],"mappings":"wCAEA,MAAAA,EAAeC,EAAmB,+BAA+B"}
