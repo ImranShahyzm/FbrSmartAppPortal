@@ -28,7 +28,7 @@ import { pathInWorkspace, workspaceRootPath } from './odooNavUtils';
 const DRAWER_WIDTH = 288;
 
 /**
- * Below `md`, the horizontal Odoo module bar is hidden; a hamburger opens this drawer
+ * Below `lg`, the horizontal Odoo module bar is hidden; a hamburger opens this drawer
  * (same destinations as the desktop top nav).
  */
 export function OdooShellMobileNav() {
@@ -43,6 +43,10 @@ export function OdooShellMobileNav() {
     const root = workspaceRootPath(activeAppId);
     const p = (path: string) => pathInWorkspace(root, path);
     const canReadCoa = useAccountingAccess('glChartAccounts', 'read');
+    const canJv = useAccountingAccess('glJournalVouchers', 'read');
+    const canVoucherTypes = useAccountingAccess('glVoucherTypes', 'read');
+    const canGenBank = useAccountingAccess('genBankInformation', 'read');
+    const canGenCash = useAccountingAccess('genCashInformation', 'read');
     const canReports = useCanAccess(ACCOUNTING_SUITE_APP_ID, 'accountingReports', 'read');
     const canSecurityGroups = useCanAccess(SETTINGS_APP_ID, 'securityGroups', 'read');
     const canUsers = useCanAccess(SETTINGS_APP_ID, 'users', 'read');
@@ -71,6 +75,46 @@ export function OdooShellMobileNav() {
                 <ListItemButton component={Link} to={p('/customers')} onClick={close} sx={itemSx}>
                     <ListItemText primary={translate('shell.accounting.customers')} />
                 </ListItemButton>
+                {canJv ? (
+                    <>
+                        <Divider sx={{ my: 1 }} />
+                        <ListSubheader
+                            disableSticky
+                            sx={{
+                                fontWeight: 700,
+                                fontSize: 12,
+                                lineHeight: '32px',
+                                color: 'primary.main',
+                            }}
+                        >
+                            {translate('shell.accounting.transaction')}
+                        </ListSubheader>
+                        <ListSubheader
+                            disableSticky
+                            sx={{ fontWeight: 600, fontSize: 11, pl: 2, lineHeight: '28px' }}
+                        >
+                            {translate('shell.accounting.transaction_payments')}
+                        </ListSubheader>
+                        <ListItemButton component={Link} to={p('/bankPayments/create')} onClick={close} sx={itemSx}>
+                            <ListItemText primary={translate('shell.accounting.bank_payments')} />
+                        </ListItemButton>
+                        <ListItemButton component={Link} to={p('/cashPayments/create')} onClick={close} sx={itemSx}>
+                            <ListItemText primary={translate('shell.accounting.cash_payments')} />
+                        </ListItemButton>
+                        <ListSubheader
+                            disableSticky
+                            sx={{ fontWeight: 600, fontSize: 11, pl: 2, lineHeight: '28px' }}
+                        >
+                            {translate('shell.accounting.transaction_receipts')}
+                        </ListSubheader>
+                        <ListItemButton component={Link} to={p('/bankReceipts/create')} onClick={close} sx={itemSx}>
+                            <ListItemText primary={translate('shell.accounting.bank_receipts')} />
+                        </ListItemButton>
+                        <ListItemButton component={Link} to={p('/cashReceipts/create')} onClick={close} sx={itemSx}>
+                            <ListItemText primary={translate('shell.accounting.cash_receipts')} />
+                        </ListItemButton>
+                    </>
+                ) : null}
                 <ListSubheader disableSticky sx={{ fontWeight: 700, fontSize: 12, lineHeight: '32px' }}>
                     {translate('shell.accounting.accounting')}
                 </ListSubheader>
@@ -101,7 +145,10 @@ export function OdooShellMobileNav() {
                     </>
                 ) : null}
                 <Divider sx={{ my: 1 }} />
-                <ListSubheader disableSticky sx={{ fontWeight: 700, fontSize: 12, lineHeight: '32px' }}>
+                <ListSubheader
+                    disableSticky
+                    sx={{ fontWeight: 700, fontSize: 12, lineHeight: '32px', color: 'primary.main' }}
+                >
                     {translate('shell.accounting.configuration')}
                 </ListSubheader>
                 {canReadCoa ? (
@@ -117,6 +164,21 @@ export function OdooShellMobileNav() {
                         </span>
                     </Tooltip>
                 )}
+                {canVoucherTypes ? (
+                    <ListItemButton component={Link} to={p('/glVoucherTypes')} onClick={close} sx={itemSx}>
+                        <ListItemText primary={translate('shell.accounting.voucher_types')} />
+                    </ListItemButton>
+                ) : null}
+                {canGenBank ? (
+                    <ListItemButton component={Link} to={p('/genBankInformation')} onClick={close} sx={itemSx}>
+                        <ListItemText primary={translate('shell.accounting.bank_information')} />
+                    </ListItemButton>
+                ) : null}
+                {canGenCash ? (
+                    <ListItemButton component={Link} to={p('/genCashInformation')} onClick={close} sx={itemSx}>
+                        <ListItemText primary={translate('shell.accounting.cash_information')} />
+                    </ListItemButton>
+                ) : null}
             </List>
         );
     } else if (activeAppId === SETTINGS_APP_ID) {
@@ -213,7 +275,7 @@ export function OdooShellMobileNav() {
 
     return (
         <>
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center' }}>
+            <Box sx={{ display: { xs: 'flex', lg: 'none' }, alignItems: 'center' }}>
                 <IconButton
                     color="inherit"
                     edge="start"

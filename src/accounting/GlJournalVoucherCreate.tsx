@@ -19,6 +19,10 @@ function mergeDuplicateDefaults(dup: JournalDuplicateState | undefined): Record<
         voucherDate: Number.isNaN(voucherDate.getTime()) ? new Date() : voucherDate,
         remarks: dup.remarks,
         manualNo: dup.manualNo,
+        bankCashGlAccountId:
+            dup.bankCashGlAccountId != null && Number(dup.bankCashGlAccountId) > 0
+                ? Number(dup.bankCashGlAccountId)
+                : null,
         lines,
     };
 }
@@ -34,6 +38,7 @@ export default function GlJournalVoucherCreate() {
             voucherDate: new Date(),
             remarks: '',
             manualNo: '',
+            bankCashGlAccountId: null as number | null,
             lines: [emptyGlJournalLine(), emptyGlJournalLine()],
             ...mergeDuplicateDefaults(duplicateDefaults),
         }),

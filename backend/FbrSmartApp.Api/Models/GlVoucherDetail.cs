@@ -51,6 +51,14 @@ public sealed class GlVoucherDetail
     [Column("PartyID")]
     public int? PartyId { get; set; }
 
+    /// <summary>Optional link to dbo.gen_Pes_SchemeInfo.SchemeID.</summary>
+    [Column("SchemeId")]
+    public int? SchemeId { get; set; }
+
+    /// <summary>Legacy ERP log line flag; filter with ISNULL(IsLog,0)=0 when present.</summary>
+    [Column("IsLog")]
+    public bool IsLog { get; set; }
+
     public GlVoucherMain? VoucherMain { get; set; }
 
     public GlChartOfAccount? GlAccount { get; set; }

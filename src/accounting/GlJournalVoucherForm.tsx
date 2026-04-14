@@ -31,6 +31,7 @@ import {
     JV_UNDERLINE_FIELD_SX,
     JournalFieldRow,
 } from './glJournalVoucherFieldStyles';
+import { CompactAutocompleteInput } from '../common/odooCompactFormFields';
 import { GlJournalVoucherLinesGrid, type GlJournalLineRow } from './GlJournalVoucherLinesGrid';
 import { GlJournalVoucherPdfDocument } from './GlJournalVoucherPdf';
 import { buildGlJournalVoucherPdfProps, chartAccountDisplayLabel } from './glJournalVoucherPrintModel';
@@ -41,7 +42,25 @@ const GL_JOURNAL_VOUCHERS_THREAD_KEY = 'glJournalVouchers';
 
 const MISC_VOUCHER_TYPE_FILTER = { systemType: 5 };
 
-function JournalDocHeading({ isCreate }: { isCreate: boolean }) {
+function glChartAutocompleteText(record: {
+    glCode?: string | null;
+    glTitle?: string | null;
+    typeLabel?: string | null;
+}): string {
+    const code = (record.glCode ?? '').trim();
+    const title = (record.glTitle ?? '').trim();
+    const t = (record.typeLabel ?? '').trim();
+    const main = [code, title].filter(Boolean).join(' — ');
+    return t ? `${main} (${t})` : main;
+}
+
+function JournalDocHeading({
+    isCreate,
+    titleOverride,
+}: {
+    isCreate: boolean;
+    titleOverride?: string;
+}) {
     const translate = useTranslate();
     const manualNo = useWatch({ name: 'manualNo' }) as string | undefined;
     const record = useRecordContext<Record<string, unknown>>();
@@ -52,7 +71,9 @@ function JournalDocHeading({ isCreate }: { isCreate: boolean }) {
                 {translate('resources.glJournalVouchers.document_label', { _: 'Journal voucher' })}
             </Typography>
             <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2, fontSize: '1.25rem' }}>
-                {isCreate ? translate('resources.glJournalVouchers.create_title') : voucherNo || '—'}
+                {isCreate
+                    ? titleOverride ?? translate('resources.glJournalVouchers.create_title')
+                    : voucherNo || '—'}
             </Typography>
             {!isCreate && manualNo?.trim() ? (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
@@ -225,12 +246,23 @@ function JournalVoucherWorkflowBar({
     );
 }
 
-export function GlJournalVoucherForm(props: { variant: 'create' | 'edit' }) {
-    const { variant } = props;
+export type GlJournalVoucherFormProps = {
+    variant: 'create' | 'edit';
+    /** When set (create flows), restricts voucher type list. When omitted, miscellaneous (5) only. */
+    voucherTypeFilter?: Record<string, unknown>;
+    /** Master bank/cash GL account picker; when set on create, filters chart to linked bank or cash books. */
+    bankCashLinkKind?: 'bank' | 'cash';
+    /** Optional create screen title (translation string passed from parent). */
+    createDocumentTitle?: string;
+};
+
+export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
+    const { variant, voucherTypeFilter: voucherTypeFilterProp, bankCashLinkKind: bankCashLinkKindProp } =
+        props;
     const translate = useTranslate();
     const notify = useNotify();
     const record = useRecordContext<Record<string, unknown>>();
-    const { watch, getValues } = useFormContext();
+    const { watch, getValues, setValue } = useFormContext();
     const dataProvider = useDataProvider();
     const { identity } = useGetIdentity();
     const navigate = useNavigate();
@@ -256,6 +288,61 @@ export function GlJournalVoucherForm(props: { variant: 'create' | 'edit' }) {
         (linesForm?.length ?? 0) > 0 && Math.abs(liveDr - liveCr) < 0.0005 && liveDr > 0;
 
     const isCreate = variant === 'create';
+
+    const voucherTypeIdW = useWatch({ name: 'voucherTypeId' }) as number | string | null | undefined;
+
+    const [resolvedBankCashKind, setResolvedBankCashKind] = React.useState<'bank' | 'cash' | null>(null);
+
+    React.useEffect(() => {
+        if (bankCashLinkKindProp != null) {
+            setResolvedBankCashKind(bankCashLinkKindProp);
+            return;
+        }
+        if (isCreate || voucherTypeIdW == null || voucherTypeIdW === '') {
+            setResolvedBankCashKind(null);
+            return;
+        }
+        let cancelled = false;
+        void dataProvider
+            .getOne('glVoucherTypes', { id: voucherTypeIdW })
+            .then(({ data }) => {
+                if (cancelled) return;
+                const st = Number((data as Record<string, unknown>).systemType);
+                if (st === 3) setResolvedBankCashKind('bank');
+                else if (st === 2) setResolvedBankCashKind('cash');
+                else setResolvedBankCashKind(null);
+            })
+            .catch(() => {
+                if (!cancelled) setResolvedBankCashKind(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [bankCashLinkKindProp, dataProvider, isCreate, voucherTypeIdW]);
+
+    const bankCashLinkKind = resolvedBankCashKind ?? undefined;
+
+    const voucherTypeFilter = React.useMemo(() => {
+        if (!isCreate && voucherTypeIdW != null && voucherTypeIdW !== '')
+            return { ids: [Number(voucherTypeIdW)] };
+        if (voucherTypeFilterProp != null) return voucherTypeFilterProp;
+        return MISC_VOUCHER_TYPE_FILTER;
+    }, [isCreate, voucherTypeFilterProp, voucherTypeIdW]);
+
+    React.useEffect(() => {
+        if (!bankCashLinkKind || !isCreate || voucherTypeIdW == null || voucherTypeIdW === '') return;
+        let cancelled = false;
+        void dataProvider
+            .getOne('glVoucherTypes', { id: voucherTypeIdW })
+            .then(({ data }) => {
+                if (cancelled) return;
+                const def = (data as Record<string, unknown>).defaultControlGlAccountId;
+                if (def != null && Number(def) > 0) setValue('bankCashGlAccountId', Number(def));
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [bankCashLinkKind, dataProvider, isCreate, setValue, voucherTypeIdW]);
 
     const onDuplicateJournal = React.useCallback(() => {
         const values = getValues() as Record<string, unknown>;
@@ -377,7 +464,8 @@ export function GlJournalVoucherForm(props: { variant: 'create' | 'edit' }) {
                     <FormDocumentWorkflowBar
                         title={
                             isCreate
-                                ? translate('resources.glJournalVouchers.create_title')
+                                ? props.createDocumentTitle ??
+                                  translate('resources.glJournalVouchers.create_title')
                                 : `${translate('resources.glJournalVouchers.title_one')} ${voucherNo || `#${id ?? ''}`}`
                         }
                         subtitle={translate('resources.glJournalVouchers.subtitle')}
@@ -443,9 +531,14 @@ export function GlJournalVoucherForm(props: { variant: 'create' | 'edit' }) {
                                     p: '16px 20px !important',
                                     position: 'relative',
                                     pr: { xs: '14px !important', sm: '20px !important' },
+                                    minWidth: 0,
+                                    maxWidth: '100%',
                                 }}
                             >
-                                <JournalDocHeading isCreate={isCreate} />
+                                <JournalDocHeading
+                                    isCreate={isCreate}
+                                    titleOverride={props.createDocumentTitle}
+                                />
 
                                 <Grid container columnSpacing={4} rowSpacing={0}>
                                     <Grid size={{ xs: 12 }}>
@@ -458,7 +551,7 @@ export function GlJournalVoucherForm(props: { variant: 'create' | 'edit' }) {
                                                 source="voucherTypeId"
                                                 reference="glVoucherTypes"
                                                 perPage={200}
-                                                filter={MISC_VOUCHER_TYPE_FILTER}
+                                                filter={voucherTypeFilter}
                                             >
                                                 <SelectInput
                                                     fullWidth
@@ -477,6 +570,47 @@ export function GlJournalVoucherForm(props: { variant: 'create' | 'edit' }) {
                                             </ReferenceInput>
                                         </JournalFieldRow>
                                     </Grid>
+                                    {bankCashLinkKind ? (
+                                        <Grid size={{ xs: 12 }}>
+                                            <JournalFieldRow
+                                                label={translate(
+                                                    'resources.glJournalVouchers.fields.bank_cash_account',
+                                                    {
+                                                        _: 'Bank / cash account',
+                                                    }
+                                                )}
+                                            >
+                                                <ReferenceInput
+                                                    source="bankCashGlAccountId"
+                                                    reference="glChartAccounts"
+                                                    perPage={200}
+                                                    filter={{
+                                                        bankCashLinkKind,
+                                                    }}
+                                                >
+                                                    <CompactAutocompleteInput
+                                                        label={false}
+                                                        optionText={(r: {
+                                                            glCode?: string | null;
+                                                            glTitle?: string | null;
+                                                            typeLabel?: string | null;
+                                                        }) => glChartAutocompleteText(r)}
+                                                        filterToQuery={(q: string) => ({
+                                                            q,
+                                                            bankCashLinkKind,
+                                                        })}
+                                                        fullWidth
+                                                        parse={v => v ?? null}
+                                                        disabled={readOnly}
+                                                        sx={{
+                                                            ...JV_UNDERLINE_FIELD_SX,
+                                                            '& .MuiAutocomplete-inputRoot': { minHeight: 36 },
+                                                        }}
+                                                    />
+                                                </ReferenceInput>
+                                            </JournalFieldRow>
+                                        </Grid>
+                                    ) : null}
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <JournalFieldRow
                                             label={translate('resources.glJournalVouchers.fields.voucher_date')}
@@ -525,7 +659,7 @@ export function GlJournalVoucherForm(props: { variant: 'create' | 'edit' }) {
                                     </Grid>
                                 </Grid>
 
-                                <Box sx={{ mt: 2 }}>
+                                <Box sx={{ mt: 2, minWidth: 0, maxWidth: '100%' }}>
                                     <GlJournalVoucherLinesGrid readOnly={readOnly} />
                                 </Box>
                             </CardContent>

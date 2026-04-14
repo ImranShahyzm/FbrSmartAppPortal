@@ -50,8 +50,14 @@ function menusForApp(app: AppRegistryEntry): RegisteredAppMenuEntry[] {
             { menuKey: `${bp}/customers`, pathLabel: `${n}/Customers`, appId: id },
             { menuKey: `${bp}/glJournalVouchers/create`, pathLabel: `${n}/Accounting/Journal vouchers (new)`, appId: id },
             { menuKey: `${bp}/glJournalVouchers`, pathLabel: `${n}/Accounting/Vouchers log book`, appId: id },
+            { menuKey: `${bp}/bankPayments/create`, pathLabel: `${n}/Transaction/Payments/Bank payments`, appId: id },
+            { menuKey: `${bp}/cashPayments/create`, pathLabel: `${n}/Transaction/Payments/Cash payments`, appId: id },
+            { menuKey: `${bp}/bankReceipts/create`, pathLabel: `${n}/Transaction/Receipts/Bank receipts`, appId: id },
+            { menuKey: `${bp}/cashReceipts/create`, pathLabel: `${n}/Transaction/Receipts/Cash receipts`, appId: id },
             { menuKey: `${bp}/glChartAccounts`, pathLabel: `${n}/Configuration/Chart of accounts`, appId: id },
             { menuKey: `${bp}/glVoucherTypes`, pathLabel: `${n}/Configuration/Voucher types`, appId: id },
+            { menuKey: `${bp}/genBankInformation`, pathLabel: `${n}/Configuration/Bank information`, appId: id },
+            { menuKey: `${bp}/genCashInformation`, pathLabel: `${n}/Configuration/Cash information`, appId: id },
         ];
     }
 

@@ -18,6 +18,8 @@ public sealed class GlJournalVouchersController : ControllerBase
 {
     private const string ResourceKey = "glJournalVouchers";
 
+    private const int VoucherSystemTypeCash = 2;
+    private const int VoucherSystemTypeBank = 3;
     private const int VoucherSystemTypeMiscellaneous = 5;
 
     private readonly AppDbContext _db;
@@ -240,6 +242,7 @@ public sealed class GlJournalVouchersController : ControllerBase
             remarks = m.Remarks,
             manualNo = m.ManualNo,
             branchId = m.BranchId,
+            bankCashGlAccountId = m.BankCashGlAccountId,
             posted = m.Posted,
             cancelled = m.Cancelled,
             readOnly = m.ReadOnly,
@@ -287,6 +290,9 @@ public sealed class GlJournalVouchersController : ControllerBase
         var err = await ValidateWriteAsync(companyId, body, ct);
         if (err != null) return err;
 
+        var vtRow = await _db.GlVoucherTypes.AsNoTracking()
+            .FirstAsync(x => x.Id == body.voucherTypeId && x.Companyid == companyId, ct);
+
         var vNo = await GenerateNextVoucherNoAsync(companyId, body.voucherTypeId, body.voucherDate, ct);
         var (totalDr, totalCr) = SumLines(body.lines);
         var draftStatusId = await GetApprovalStatusIdByCodeAsync("draft", ct);
@@ -307,6 +313,7 @@ public sealed class GlJournalVouchersController : ControllerBase
             TotalCr = totalCr,
             ReadOnly = false,
             ApprovalStatusId = draftStatusId,
+            BankCashGlAccountId = BankCashIdForPersist(vtRow.SystemType, body.bankCashGlAccountId),
         };
 
         _db.GlVoucherMains.Add(entity);
@@ -357,6 +364,9 @@ public sealed class GlJournalVouchersController : ControllerBase
         var (totalDr, totalCr) = SumLines(body.lines);
         entity.TotalDr = totalDr;
         entity.TotalCr = totalCr;
+        var vtForPersist = await _db.GlVoucherTypes.AsNoTracking()
+            .FirstAsync(x => x.Id == body.voucherTypeId && x.Companyid == companyId, ct);
+        entity.BankCashGlAccountId = BankCashIdForPersist(vtForPersist.SystemType, body.bankCashGlAccountId);
 
         await ReplaceDetailsAsync(companyId, id, body.lines, ct);
         await _db.SaveChangesAsync(ct);
@@ -670,8 +680,13 @@ public sealed class GlJournalVouchersController : ControllerBase
         var vt = await _db.GlVoucherTypes.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == body.voucherTypeId && x.Companyid == companyId, ct);
         if (vt is null) return BadRequest(new { message = "Invalid journal (voucher type)." });
-        if (vt.SystemType != VoucherSystemTypeMiscellaneous)
-            return BadRequest(new { message = "Only Miscellaneous voucher types are allowed for journal vouchers." });
+        if (vt.SystemType != VoucherSystemTypeMiscellaneous &&
+            vt.SystemType != VoucherSystemTypeCash &&
+            vt.SystemType != VoucherSystemTypeBank)
+            return BadRequest(new { message = "This voucher type is not supported." });
+
+        var bankErr = await ValidateBankCashGlAccountAsync(companyId, vt.SystemType, body.bankCashGlAccountId, ct);
+        if (bankErr != null) return bankErr;
 
         if (body.lines is null || body.lines.Count == 0)
             return BadRequest(new { message = "Add at least one line." });
@@ -754,6 +769,45 @@ public sealed class GlJournalVouchersController : ControllerBase
         if (!Guid.TryParse(sub, out var userId)) return null;
         return await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
     }
+
+    private static int? BankCashIdForPersist(int systemType, int? bankCashGlAccountId)
+    {
+        if (systemType != VoucherSystemTypeCash && systemType != VoucherSystemTypeBank)
+            return null;
+        return bankCashGlAccountId is > 0 ? bankCashGlAccountId : null;
+    }
+
+    private async Task<IActionResult?> ValidateBankCashGlAccountAsync(
+        int companyId,
+        int systemType,
+        int? bankCashGlAccountId,
+        CancellationToken ct)
+    {
+        if (bankCashGlAccountId is null or <= 0)
+            return null;
+
+        var glOk = await _db.GlChartOfAccounts.AsNoTracking()
+            .AnyAsync(a => a.Id == bankCashGlAccountId.Value && a.CompanyId == companyId, ct);
+        if (!glOk)
+            return BadRequest(new { message = "Bank/cash GL account is invalid for this company." });
+
+        if (systemType == VoucherSystemTypeBank)
+        {
+            var ok = await _db.GenBankInformations.AsNoTracking()
+                .AnyAsync(b => b.CompanyId == companyId && b.GlcaId == bankCashGlAccountId, ct);
+            if (!ok)
+                return BadRequest(new { message = "Select a bank account registered under Bank information." });
+        }
+        else if (systemType == VoucherSystemTypeCash)
+        {
+            var ok = await _db.GenCashInformations.AsNoTracking()
+                .AnyAsync(b => b.CompanyId == companyId && b.CashAccount == bankCashGlAccountId, ct);
+            if (!ok)
+                return BadRequest(new { message = "Select a cash account registered under Cash information." });
+        }
+
+        return null;
+    }
 }
 
 public sealed class GlJournalVoucherListDto
@@ -778,6 +832,7 @@ public sealed class GlJournalVoucherDetailDto
     public string? remarks { get; set; }
     public string? manualNo { get; set; }
     public int? branchId { get; set; }
+    public int? bankCashGlAccountId { get; set; }
     public bool posted { get; set; }
     public bool cancelled { get; set; }
     public bool readOnly { get; set; }
@@ -817,6 +872,7 @@ public sealed class GlJournalVoucherWriteDto
     public string? remarks { get; set; }
     public string? manualNo { get; set; }
     public int? branchId { get; set; }
+    public int? bankCashGlAccountId { get; set; }
     public List<GlJournalVoucherLineWriteDto> lines { get; set; } = [];
 }
 

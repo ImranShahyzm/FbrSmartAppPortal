@@ -34,6 +34,8 @@ const backendResources = new Set([
     'glChartAccounts',
     'glVoucherTypes',
     'glJournalVouchers',
+    'genBankInformation',
+    'genCashInformation',
     'registerCurrencies',
     'securityGroups',
 ]);

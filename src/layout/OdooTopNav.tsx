@@ -26,10 +26,13 @@ const topNavRowSx = {
     flex: 1,
     minWidth: 0,
     display: 'flex',
+    flexWrap: 'nowrap',
     alignItems: 'center',
     gap: 0.25,
     overflowX: 'auto',
+    scrollbarGutter: 'stable',
     py: 0.5,
+    '& > *': { flexShrink: 0 },
     '&::-webkit-scrollbar': { height: 4 },
 } as const;
 
@@ -47,7 +50,7 @@ export function OdooTopNav() {
 
     if (!companyActive) {
         return (
-            <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+            <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', lg: 'flex' }, alignItems: 'center' }}>
                 <Button color="inherit" component={Link} to={root} size="small">
                     {translate('ra.page.dashboard', { _: 'Dashboard' })}
                 </Button>
@@ -65,7 +68,7 @@ export function OdooTopNav() {
 
     if (activeAppId !== 'fbr-smart') {
         return (
-            <Box sx={{ ...topNavRowSx, display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ ...topNavRowSx, display: { xs: 'none', lg: 'flex' } }}>
                 <Button color="inherit" component={Link} to={root} size="small">
                     {translate('ra.page.dashboard', { _: 'Dashboard' })}
                 </Button>
@@ -82,7 +85,7 @@ function FbrSmartTopNav(props: { workspaceRoot: string }) {
     const p = (path: string) => pathInWorkspace(root, path);
 
     return (
-        <Box sx={{ ...topNavRowSx, display: { xs: 'none', md: 'flex' } }}>
+        <Box sx={{ ...topNavRowSx, display: { xs: 'none', lg: 'flex' } }}>
             <Button color="inherit" component={Link} to={root} size="small">
                 {translate('ra.page.dashboard', { _: 'Dashboard' })}
             </Button>
@@ -136,7 +139,7 @@ function SettingsShellTopNav(props: { workspaceRoot: string }) {
     const canUsers = useCanAccess(SETTINGS_APP_ID, 'users', 'read');
 
     return (
-        <Box sx={{ ...topNavRowSx, display: { xs: 'none', md: 'flex' } }}>
+        <Box sx={{ ...topNavRowSx, display: { xs: 'none', lg: 'flex' } }}>
             <Button color="inherit" component={Link} to={root} size="small">
                 {translate('ra.page.dashboard', { _: 'Dashboard' })}
             </Button>
@@ -154,6 +157,112 @@ function SettingsShellTopNav(props: { workspaceRoot: string }) {
                 </Button>
             ) : null}
         </Box>
+    );
+}
+
+function TransactionAccountingDropdown(props: { workspaceRoot: string }) {
+    const translate = useTranslate();
+    const canJv = useAccountingAccess('glJournalVouchers', 'read');
+    const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
+    const open = Boolean(anchor);
+    const root = props.workspaceRoot;
+    const bp = pathInWorkspace(root, '/bankPayments/create');
+    const cp = pathInWorkspace(root, '/cashPayments/create');
+    const br = pathInWorkspace(root, '/bankReceipts/create');
+    const cr = pathInWorkspace(root, '/cashReceipts/create');
+
+    if (!canJv) {
+        return (
+            <Tooltip title={translate('shell.accounting.no_access_transactions')}>
+                <span>
+                    <Button color="inherit" size="small" disabled sx={{ whiteSpace: 'nowrap', opacity: 0.65 }}>
+                        {translate('shell.accounting.transaction')}
+                    </Button>
+                </span>
+            </Tooltip>
+        );
+    }
+
+    return (
+        <>
+            <Button
+                color="inherit"
+                size="small"
+                onClick={e => setAnchor(e.currentTarget)}
+                sx={{ whiteSpace: 'nowrap' }}
+            >
+                {translate('shell.accounting.transaction')}
+            </Button>
+            <Menu
+                anchorEl={anchor}
+                open={open}
+                onClose={() => setAnchor(null)}
+                slots={{ transition: Fade }}
+                transitionDuration={180}
+                slotProps={catalogDropdownMenuSlotProps(open)}
+            >
+                <ListSubheader
+                    disableSticky
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: 'primary.main',
+                        lineHeight: 1.3,
+                        py: 0.75,
+                        pl: 1.25,
+                        pr: 2,
+                    }}
+                >
+                    {translate('shell.accounting.transaction_payments')}
+                </ListSubheader>
+                <MenuItem
+                    component={Link}
+                    to={bp}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    {translate('shell.accounting.bank_payments')}
+                </MenuItem>
+                <MenuItem
+                    component={Link}
+                    to={cp}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    {translate('shell.accounting.cash_payments')}
+                </MenuItem>
+                <ListSubheader
+                    disableSticky
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: 'primary.main',
+                        lineHeight: 1.3,
+                        py: 0.75,
+                        pl: 1.25,
+                        pr: 2,
+                    }}
+                >
+                    {translate('shell.accounting.transaction_receipts')}
+                </ListSubheader>
+                <MenuItem
+                    component={Link}
+                    to={br}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    {translate('shell.accounting.bank_receipts')}
+                </MenuItem>
+                <MenuItem
+                    component={Link}
+                    to={cr}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    {translate('shell.accounting.cash_receipts')}
+                </MenuItem>
+            </Menu>
+        </>
     );
 }
 
@@ -177,14 +286,14 @@ function AccountingShellTopNav(props: { workspaceRoot: string }) {
     );
 
     return (
-        <Box sx={{ ...topNavRowSx, display: { xs: 'none', md: 'flex' } }}>
+        <Box sx={{ ...topNavRowSx, display: { xs: 'none', lg: 'flex' } }}>
             <Button color="inherit" component={Link} to={root} size="small">
                 {translate('shell.accounting.dashboard')}
             </Button>
             <Button color="inherit" component={Link} to={pathInWorkspace(root, '/customers')} size="small">
                 {translate('shell.accounting.customers')}
             </Button>
-            {stubNav(translate('shell.accounting.vendors'))}
+            <TransactionAccountingDropdown workspaceRoot={root} />
             <NavDropdown
                 label={translate('shell.accounting.accounting')}
                 items={[
@@ -267,10 +376,14 @@ function ConfigurationAccountingDropdown(props: { workspaceRoot: string }) {
     const translate = useTranslate();
     const canReadCoa = useAccountingAccess('glChartAccounts', 'read');
     const canReadVouchers = useAccountingAccess('glVoucherTypes', 'read');
+    const canReadBankInfo = useAccountingAccess('genBankInformation', 'read');
+    const canReadCashInfo = useAccountingAccess('genCashInformation', 'read');
     const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
     const open = Boolean(anchor);
     const coaPath = pathInWorkspace(props.workspaceRoot, '/glChartAccounts');
     const voucherTypesPath = pathInWorkspace(props.workspaceRoot, '/glVoucherTypes');
+    const bankInfoPath = pathInWorkspace(props.workspaceRoot, '/genBankInformation');
+    const cashInfoPath = pathInWorkspace(props.workspaceRoot, '/genCashInformation');
 
     return (
         <>
@@ -290,7 +403,7 @@ function ConfigurationAccountingDropdown(props: { workspaceRoot: string }) {
                     sx={{
                         fontWeight: 700,
                         fontSize: 13,
-                        color: 'text.primary',
+                        color: 'primary.main',
                         lineHeight: 1.3,
                         py: 0.75,
                         pl: 1.25,
@@ -335,6 +448,26 @@ function ConfigurationAccountingDropdown(props: { workspaceRoot: string }) {
                         </span>
                     </Tooltip>
                 )}
+                {canReadBankInfo ? (
+                    <MenuItem
+                        component={Link}
+                        to={bankInfoPath}
+                        onClick={() => setAnchor(null)}
+                        sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                    >
+                        {translate('shell.accounting.bank_information')}
+                    </MenuItem>
+                ) : null}
+                {canReadCashInfo ? (
+                    <MenuItem
+                        component={Link}
+                        to={cashInfoPath}
+                        onClick={() => setAnchor(null)}
+                        sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                    >
+                        {translate('shell.accounting.cash_information')}
+                    </MenuItem>
+                ) : null}
             </Menu>
         </>
     );

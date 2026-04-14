@@ -17,8 +17,20 @@ import GlJournalVoucherEdit from '../accounting/GlJournalVoucherEdit';
 import GlJournalVoucherList from '../accounting/GlJournalVoucherList';
 import GlVoucherTypeCreate from '../accounting/GlVoucherTypeCreate';
 import GlVoucherTypeEdit from '../accounting/GlVoucherTypeEdit';
-import { GeneralLedgerPlaceholderPage } from '../accounting/reports/GeneralLedgerPlaceholderPage';
+import { GenBankInformationCreate } from '../accounting/genBankInformation/GenBankInformationCreate';
+import { GenBankInformationEdit } from '../accounting/genBankInformation/GenBankInformationEdit';
+import { GenBankInformationList } from '../accounting/genBankInformation/GenBankInformationList';
+import { GenCashInformationCreate } from '../accounting/genCashInformation/GenCashInformationCreate';
+import { GenCashInformationEdit } from '../accounting/genCashInformation/GenCashInformationEdit';
+import { GenCashInformationList } from '../accounting/genCashInformation/GenCashInformationList';
+import { GeneralLedgerReportPage } from '../accounting/reports/GeneralLedgerReportPage';
 import { TrialBalanceReportPage } from '../accounting/reports/TrialBalanceReportPage';
+import {
+    BankPaymentJournalVoucherCreate,
+    BankReceiptJournalVoucherCreate,
+    CashPaymentJournalVoucherCreate,
+    CashReceiptJournalVoucherCreate,
+} from '../accounting/transaction/TransactionJournalVoucherCreates';
 import { createScopedReactRouterProvider } from './scopedRouterProvider';
 import type { WorkspaceComponentProps } from './appsRegistry';
 
@@ -66,7 +78,15 @@ export function AccountingWorkspace(props: WorkspaceComponentProps) {
                         element={<Navigate to={`${base}/glJournalVouchers`} replace />}
                     />
                     <Route path="/reports/trial-balance" element={<TrialBalanceReportPage />} />
-                    <Route path="/reports/general-ledger" element={<GeneralLedgerPlaceholderPage />} />
+                    <Route path="/reports/general-ledger" element={<GeneralLedgerReportPage />} />
+                    {showResource('glJournalVouchers') ? (
+                        <>
+                            <Route path="/bankPayments/create" element={<BankPaymentJournalVoucherCreate />} />
+                            <Route path="/cashPayments/create" element={<CashPaymentJournalVoucherCreate />} />
+                            <Route path="/bankReceipts/create" element={<BankReceiptJournalVoucherCreate />} />
+                            <Route path="/cashReceipts/create" element={<CashReceiptJournalVoucherCreate />} />
+                        </>
+                    ) : null}
                 </CustomRoutes>
                 {showResource('glChartAccounts') ? (
                     <Resource
@@ -90,6 +110,22 @@ export function AccountingWorkspace(props: WorkspaceComponentProps) {
                         list={GlJournalVoucherList}
                         create={GlJournalVoucherCreate}
                         edit={GlJournalVoucherEdit}
+                    />
+                ) : null}
+                {showResource('genBankInformation') ? (
+                    <Resource
+                        name="genBankInformation"
+                        list={GenBankInformationList}
+                        create={GenBankInformationCreate}
+                        edit={GenBankInformationEdit}
+                    />
+                ) : null}
+                {showResource('genCashInformation') ? (
+                    <Resource
+                        name="genCashInformation"
+                        list={GenCashInformationList}
+                        create={GenCashInformationCreate}
+                        edit={GenCashInformationEdit}
                     />
                 ) : null}
                 {showResource('customers') ? <Resource name="customers" {...customers} /> : null}

@@ -37,6 +37,10 @@ public sealed class GlVoucherMain
     [Column("Comp_Id")]
     public int CompanyId { get; set; }
 
+    /// <summary>Legacy ERP log-source filter; use ISNULL(LogSourceID,0)=0 when present.</summary>
+    [Column("LogSourceID")]
+    public int LogSourceId { get; set; }
+
     [Column("BranchID")]
     public int? BranchId { get; set; }
 
@@ -71,6 +75,12 @@ public sealed class GlVoucherMain
     public ApprovalStatus? ApprovalStatus { get; set; }
 
     public GlVoucherType? VoucherType { get; set; }
+
+    /// <summary>Optional bank/cash GL account selected on payment & receipt vouchers.</summary>
+    [Column("BankCashGlAccountId")]
+    public int? BankCashGlAccountId { get; set; }
+
+    public GlChartOfAccount? BankCashGlAccount { get; set; }
 
     public ICollection<GlVoucherDetail> Details { get; set; } = new List<GlVoucherDetail>();
 }

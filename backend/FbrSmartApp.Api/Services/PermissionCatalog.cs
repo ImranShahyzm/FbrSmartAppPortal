@@ -45,6 +45,8 @@ public static class PermissionCatalog
                 new ResourceEntry("glAccountTypes", "GL account types"),
                 new ResourceEntry("accountingReports", "Accounting reports"),
                 new ResourceEntry("customers", "Customers"),
+                new ResourceEntry("genBankInformation", "Bank information"),
+                new ResourceEntry("genCashInformation", "Cash information"),
             ]),
         new AppCatalogEntry(
             "settings",

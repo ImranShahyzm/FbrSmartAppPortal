@@ -18,6 +18,14 @@ public static class AppRecordMessagePolicy
                 readPermission = "accounting.glJournalVouchers.read";
                 writePermission = "accounting.glJournalVouchers.write";
                 return true;
+            case "genbankinformation":
+                readPermission = "accounting.genBankInformation.read";
+                writePermission = "accounting.genBankInformation.write";
+                return true;
+            case "gencashinformation":
+                readPermission = "accounting.genCashInformation.read";
+                writePermission = "accounting.genCashInformation.write";
+                return true;
             default:
                 return false;
         }

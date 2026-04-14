@@ -5,6 +5,8 @@ export type AccountingSecurableResource =
     | 'glChartAccounts'
     | 'glVoucherTypes'
     | 'glJournalVouchers'
+    | 'genBankInformation'
+    | 'genCashInformation'
     | 'accountingReports';
 
 /** Flat strings e.g. accounting.glChartAccounts.read, accounting.glVoucherTypes.create */

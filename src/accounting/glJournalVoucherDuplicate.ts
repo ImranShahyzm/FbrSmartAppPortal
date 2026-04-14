@@ -7,6 +7,7 @@ export type JournalDuplicateState = {
     voucherDate?: string | Date;
     remarks: string;
     manualNo: string;
+    bankCashGlAccountId?: number | null;
     lines: GlJournalLineRow[];
 };
 
@@ -20,6 +21,10 @@ export function buildJournalDuplicatePayload(values: Record<string, unknown>): J
         voucherDate: values.voucherDate as Date | string | undefined,
         remarks: values.remarks != null ? String(values.remarks) : '',
         manualNo: values.manualNo != null ? String(values.manualNo) : '',
+        bankCashGlAccountId:
+            values.bankCashGlAccountId != null && values.bankCashGlAccountId !== ''
+                ? Number(values.bankCashGlAccountId)
+                : null,
         lines: lines.map(l => ({
             glAccountId: l.glAccountId,
             narration: l.narration ?? '',
