@@ -13,12 +13,10 @@ async function transformCashUpdate(data: Record<string, unknown>): Promise<Recor
     if (cashAccount == null || !Number.isFinite(cashAccount) || cashAccount <= 0) {
         throw new Error('Missing cash chart account.');
     }
-    const branchId = data.branchId;
     return {
         accountTitle: data.accountTitle != null ? String(data.accountTitle) : '',
         cashAccount,
-        branchId:
-            branchId != null && branchId !== '' && Number(branchId) > 0 ? Number(branchId) : null,
+        userIds: Array.isArray(data.userIds) ? (data.userIds as unknown[]).map(x => String(x)) : [],
     };
 }
 

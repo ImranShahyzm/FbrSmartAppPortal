@@ -307,7 +307,6 @@ function AccountingShellTopNav(props: { workspaceRoot: string }) {
                     },
                 ]}
             />
-            {stubNav(translate('shell.accounting.review'))}
             <ReportingAccountingDropdown workspaceRoot={root} />
             <ConfigurationAccountingDropdown workspaceRoot={root} />
         </Box>

@@ -43,7 +43,10 @@ public sealed class AppDbContext : DbContext
     public DbSet<GlVoucherMain> GlVoucherMains => Set<GlVoucherMain>();
     public DbSet<GlVoucherDetail> GlVoucherDetails => Set<GlVoucherDetail>();
     public DbSet<GenBankInformation> GenBankInformations => Set<GenBankInformation>();
+    public DbSet<GenCheckBookInfo> GenCheckBookInfos => Set<GenCheckBookInfo>();
+    public DbSet<GenCheckBookCancelledSerial> GenCheckBookCancelledSerials => Set<GenCheckBookCancelledSerial>();
     public DbSet<GenCashInformation> GenCashInformations => Set<GenCashInformation>();
+    public DbSet<GenCashInformationUser> GenCashInformationUsers => Set<GenCashInformationUser>();
     public DbSet<AppRecordMessage> AppRecordMessages => Set<AppRecordMessage>();
     public DbSet<SecurityGroup> SecurityGroups => Set<SecurityGroup>();
     public DbSet<UserSecurityGroup> UserSecurityGroups => Set<UserSecurityGroup>();
@@ -585,6 +588,8 @@ public sealed class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.BankCashGlAccountId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.Property(x => x.ChequeNo).HasMaxLength(50);
+            entity.Property(x => x.ChequeDate).HasColumnType("date");
         });
 
         modelBuilder.Entity<GenBankInformation>(entity =>
@@ -596,6 +601,29 @@ public sealed class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.GlcaId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany(x => x.CheckBooks)
+                .WithOne(x => x.Bank)
+                .HasForeignKey(x => x.BankId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GenCheckBookInfo>(entity =>
+        {
+            entity.ToTable("gen_CheckBookInfo");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SerialNoStart).HasPrecision(18, 0);
+            entity.Property(x => x.SerialNoEnd).HasPrecision(18, 0);
+            entity.HasMany(x => x.CancelledSerials)
+                .WithOne(x => x.CheckBook)
+                .HasForeignKey(x => x.CheckBookId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GenCheckBookCancelledSerial>(entity =>
+        {
+            entity.ToTable("gen_CheckBookCancelledSerial");
+            entity.HasKey(x => new { x.CheckBookId, x.SerialNo });
+            entity.Property(x => x.SerialNo).HasPrecision(18, 0);
         });
 
         modelBuilder.Entity<GenCashInformation>(entity =>
@@ -607,6 +635,20 @@ public sealed class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.CashAccount)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany(x => x.AllowedUsers)
+                .WithOne(x => x.CashInformation)
+                .HasForeignKey(x => x.CashInfoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GenCashInformationUser>(entity =>
+        {
+            entity.ToTable("gen_CashInformationUser");
+            entity.HasKey(x => new { x.CashInfoId, x.UserId });
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<GlVoucherDetail>(entity =>

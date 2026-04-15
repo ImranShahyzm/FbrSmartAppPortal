@@ -89,6 +89,8 @@ public sealed class GlChartOfAccountsController : ControllerBase
             try
             {
                 using var doc2 = JsonDocument.Parse(filter);
+                var currentUser = await GetCurrentUserAsync(ct);
+                var currentUserId = currentUser?.Id;
                 if (doc2.RootElement.TryGetProperty("bankCashLinkKind", out var bckEl) &&
                     bckEl.ValueKind == JsonValueKind.String)
                 {
@@ -104,12 +106,62 @@ public sealed class GlChartOfAccountsController : ControllerBase
                     }
                     else if (kind == "cash")
                     {
-                        var ids = await _db.GenCashInformations.AsNoTracking()
-                            .Where(b => b.CompanyId == companyId && b.CashAccount != null)
-                            .Select(b => b.CashAccount!.Value)
-                            .Distinct()
-                            .ToListAsync(ct);
-                        query = ids.Count == 0 ? query.Where(x => false) : query.Where(x => ids.Contains(x.Id));
+                        var scopeUsers =
+                            doc2.RootElement.TryGetProperty("cashUserScope", out var cusEl) &&
+                            (cusEl.ValueKind == JsonValueKind.True || cusEl.ValueKind == JsonValueKind.False) &&
+                            cusEl.GetBoolean();
+
+                        if (!scopeUsers || currentUserId is null)
+                        {
+                            var ids = await _db.GenCashInformations.AsNoTracking()
+                                .Where(b => b.CompanyId == companyId && b.CashAccount != null)
+                                .Select(b => b.CashAccount!.Value)
+                                .Distinct()
+                                .ToListAsync(ct);
+                            query = ids.Count == 0 ? query.Where(x => false) : query.Where(x => ids.Contains(x.Id));
+                        }
+                        else
+                        {
+                            // Visible cash accounts:
+                            // - cash info row exists, and
+                            // - either no user assignments exist (public), OR current user is assigned.
+                            var allowedIds = await _db.GenCashInformations.AsNoTracking()
+                                .Where(c => c.CompanyId == companyId && c.CashAccount != null)
+                                .Select(c => new
+                                {
+                                    GlId = c.CashAccount!.Value,
+                                    CashInfoId = c.Id,
+                                })
+                                .ToListAsync(ct);
+
+                            if (allowedIds.Count == 0)
+                            {
+                                query = query.Where(x => false);
+                            }
+                            else
+                            {
+                                var cashInfoIds = allowedIds.Select(x => x.CashInfoId).Distinct().ToList();
+                                var assignedCashInfoIds = await _db.GenCashInformationUsers.AsNoTracking()
+                                    .Where(x => cashInfoIds.Contains(x.CashInfoId))
+                                    .Select(x => x.CashInfoId)
+                                    .Distinct()
+                                    .ToListAsync(ct);
+                                var assignedSet = assignedCashInfoIds.ToHashSet();
+                                var currentAssignedCashInfoIds = await _db.GenCashInformationUsers.AsNoTracking()
+                                    .Where(x => x.UserId == currentUserId && cashInfoIds.Contains(x.CashInfoId))
+                                    .Select(x => x.CashInfoId)
+                                    .Distinct()
+                                    .ToListAsync(ct);
+                                var currentAssignedSet = currentAssignedCashInfoIds.ToHashSet();
+
+                                var glIds = allowedIds
+                                    .Where(x => !assignedSet.Contains(x.CashInfoId) || currentAssignedSet.Contains(x.CashInfoId))
+                                    .Select(x => x.GlId)
+                                    .Distinct()
+                                    .ToList();
+                                query = glIds.Count == 0 ? query.Where(x => false) : query.Where(x => glIds.Contains(x.Id));
+                            }
+                        }
                     }
                 }
             }

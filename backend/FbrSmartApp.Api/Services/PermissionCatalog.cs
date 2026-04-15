@@ -17,46 +17,10 @@ public static class PermissionCatalog
         string DisplayName,
         IReadOnlyList<ResourceEntry> Resources);
 
-    public static IReadOnlyList<AppCatalogEntry> Apps { get; } =
-    [
-        new AppCatalogEntry(
-            "fbr-smart",
-            "fbr",
-            "FBR Smart",
-            [
-                new ResourceEntry("customers", "Customers"),
-                new ResourceEntry("fbrInvoices", "FBR Invoices"),
-                new ResourceEntry("products", "Products"),
-                new ResourceEntry("productProfiles", "Product profiles"),
-                new ResourceEntry("fbrScenarios", "FBR scenarios"),
-                new ResourceEntry("fbrSalesTaxRates", "Sales tax rates"),
-                new ResourceEntry("companies", "Companies"),
-                new ResourceEntry("categories", "Categories"),
-                new ResourceEntry("reviews", "Reviews"),
-            ]),
-        new AppCatalogEntry(
-            "accounting-suite",
-            "accounting",
-            "Accounting",
-            [
-                new ResourceEntry("glChartAccounts", "Chart of accounts"),
-                new ResourceEntry("glVoucherTypes", "Voucher types"),
-                new ResourceEntry("glJournalVouchers", "Journal vouchers"),
-                new ResourceEntry("glAccountTypes", "GL account types"),
-                new ResourceEntry("accountingReports", "Accounting reports"),
-                new ResourceEntry("customers", "Customers"),
-                new ResourceEntry("genBankInformation", "Bank information"),
-                new ResourceEntry("genCashInformation", "Cash information"),
-            ]),
-        new AppCatalogEntry(
-            "settings",
-            "settings",
-            "Settings",
-            [
-                new ResourceEntry("securityGroups", "Security groups"),
-                new ResourceEntry("users", "Users"),
-            ]),
-    ];
+    /// <summary>
+    /// Single source of truth is `shared/permission-catalog.manifest.json` (generated at build).
+    /// </summary>
+    public static IReadOnlyList<AppCatalogEntry> Apps => PermissionCatalogGenerated.Apps;
 
     private static readonly Dictionary<string, string> s_prefixToAppId =
         Apps.ToDictionary(a => a.PermissionsPrefix, a => a.AppId, StringComparer.OrdinalIgnoreCase);

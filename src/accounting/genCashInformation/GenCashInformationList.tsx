@@ -54,11 +54,36 @@ function Title() {
 
 function EmptyCashInformation() {
     const translate = useTranslate();
+    const createPath = useCreatePath();
+    const canCreate = useAccountingAccess('genCashInformation', 'create');
     return (
         <Box sx={{ py: 4, px: 2, textAlign: 'center', maxWidth: 420, mx: 'auto' }}>
             <Typography variant="body1" color="text.secondary" paragraph>
                 {translate('shell.accounting.gen_cash_information_empty')}
             </Typography>
+            {canCreate ? (
+                <Button
+                    component={Link}
+                    to={createPath({ resource: 'genCashInformation', type: 'create' })}
+                    variant="contained"
+                    size="small"
+                    sx={{
+                        bgcolor: NAV_TEAL,
+                        color: '#fff',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        fontSize: 13,
+                        borderRadius: '4px',
+                        px: 2,
+                        py: '4px',
+                        minHeight: 30,
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: NAV_TEAL_DARK, boxShadow: 'none' },
+                    }}
+                >
+                    New
+                </Button>
+            ) : null}
         </Box>
     );
 }
@@ -418,9 +443,6 @@ export function GenCashInformationList() {
                 </Column>
                 <Column source="cashAccount" label={translate('resources.genCashInformation.fields.cash_account')}>
                     <TextField source="cashAccount" />
-                </Column>
-                <Column source="branchId" label={translate('resources.genCashInformation.fields.branch_id')}>
-                    <TextField source="branchId" emptyText="—" />
                 </Column>
             </DataTable>
             <PageTotalFooter />

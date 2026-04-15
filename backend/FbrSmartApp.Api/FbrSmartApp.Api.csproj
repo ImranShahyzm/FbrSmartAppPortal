@@ -21,4 +21,9 @@
     </PackageReference>
   </ItemGroup>
 
+  <Target Name="GeneratePermissionCatalog" BeforeTargets="BeforeCompile">
+    <Message Importance="high" Text="Generating PermissionCatalog from shared/permission-catalog.manifest.json" />
+    <Exec Command="node &quot;$(MSBuildProjectDirectory)\..\..\scripts\generate-permission-catalog.mjs&quot;" />
+  </Target>
+
 </Project>

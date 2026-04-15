@@ -1,14 +1,18 @@
 import * as React from 'react';
-import { NumberInput, PrevNextButtons, TextInput, useTranslate } from 'react-admin';
-import { Box, Card, CardContent, Divider, Grid, Typography } from '@mui/material';
+import { PrevNextButtons, TextInput, useTranslate } from 'react-admin';
+import { Box, Card, CardContent, Divider, Grid, Tab, Tabs, Typography } from '@mui/material';
 
 import { FormHeaderToolbar, FormSaveBridge, FORM_SAVE_GEN_CASH_INFORMATION } from '../../common/formToolbar';
 import {
     masterDetailPrimaryCardContentSx,
     masterDetailPrimaryCardSx,
+    masterDetailTabbedCardContentSx,
+    masterDetailTabbedCardSx,
+    masterDetailTabsSx,
     stickySimpleFormHeaderBarSx,
 } from '../../common/masterDetailFormTheme';
 import { securityGroupSimpleFormFieldSx } from '../../settings/SecurityGroupForm';
+import { GenCashUsersTabPanel } from './GenCashUsersTabPanel';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
@@ -31,6 +35,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function GenCashInformationFormInner({ variant }: { variant: 'create' | 'edit' }) {
     const translate = useTranslate();
+    const [tab, setTab] = React.useState(0);
 
     return (
         <>
@@ -101,28 +106,27 @@ export function GenCashInformationFormInner({ variant }: { variant: 'create' | '
                                     />
                                 </Grid>
                             </>
-                        ) : (
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <TextInput
-                                    source="cashAccount"
-                                    label={translate('resources.genCashInformation.fields.cash_account')}
-                                    fullWidth
-                                    InputProps={{ readOnly: true }}
-                                    sx={{ m: 0, ...securityGroupSimpleFormFieldSx }}
-                                    helperText={translate('resources.genCashInformation.cash_readonly_hint')}
-                                />
-                            </Grid>
-                        )}
-
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <NumberInput
-                                source="branchId"
-                                label={translate('resources.genCashInformation.fields.branch_id')}
-                                fullWidth
-                                sx={{ m: 0, ...securityGroupSimpleFormFieldSx }}
-                            />
-                        </Grid>
+                        ) : null}
                     </Grid>
+                </CardContent>
+            </Card>
+
+            <Card variant="outlined" sx={masterDetailTabbedCardSx}>
+                <CardContent sx={masterDetailTabbedCardContentSx}>
+                    <Tabs
+                        value={tab}
+                        onChange={(_, v) => setTab(v)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        sx={masterDetailTabsSx}
+                    >
+                        <Tab label="Users" />
+                    </Tabs>
+                    <Box sx={{ pt: 1.5 }}>
+                        <Box sx={{ display: tab === 0 ? 'block' : 'none' }}>
+                            <GenCashUsersTabPanel />
+                        </Box>
+                    </Box>
                 </CardContent>
             </Card>
         </>

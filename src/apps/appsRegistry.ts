@@ -43,7 +43,7 @@ export type WorkspaceComponentProps = {
 export const ACCOUNTING_SUITE_APP_ID = 'accounting-suite';
 
 export const SETTINGS_APP_ID = 'settings';
-
+export const AUTO_DEALERS_APP_ID = 'auto-dealers';
 export const APPS_REGISTRY: AppRegistryEntry[] = [
     {
         id: 'fbr-smart',
@@ -66,13 +66,13 @@ export const APPS_REGISTRY: AppRegistryEntry[] = [
         WorkspaceComponent: AccountingWorkspace,
     },
      {
-        id: SETTINGS_APP_ID,
+        id: AUTO_DEALERS_APP_ID,
         name: 'Auto Dealers',
         adminTitle: 'Auto Dealers',
         description: 'Sales, Purchase of vehicles',
         accentColor: '#2E7D32',
-        permissionsPrefix: 'AutoDealers',
-        basePath: '/AutoDealers',
+        permissionsPrefix: 'auto-dealers',
+        basePath: '/auto-dealers',
         WorkspaceComponent: SettingsWorkspace,
     },
     {

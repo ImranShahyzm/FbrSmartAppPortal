@@ -177,9 +177,15 @@ public sealed class GlJournalVouchersController : ControllerBase
             .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
         if (m is null) return NotFound();
 
-        var journalTitle = await _db.GlVoucherTypes.AsNoTracking()
+        var vtMeta = await _db.GlVoucherTypes.AsNoTracking()
             .Where(t => t.Id == m.VoucherTypeId)
-            .Select(t => t.Title)
+            .Select(t => new
+            {
+                t.Title,
+                t.SystemType,
+                t.ControlAccountTxnNature,
+                t.ShowBankAndChequeDate,
+            })
             .FirstOrDefaultAsync(ct);
 
         var lines = await _db.GlVoucherDetails.AsNoTracking()
@@ -243,6 +249,11 @@ public sealed class GlJournalVouchersController : ControllerBase
             manualNo = m.ManualNo,
             branchId = m.BranchId,
             bankCashGlAccountId = m.BankCashGlAccountId,
+            chequeNo = m.ChequeNo,
+            chequeDate = m.ChequeDate,
+            voucherSystemType = vtMeta?.SystemType ?? 0,
+            controlAccountTxnNature = vtMeta?.ControlAccountTxnNature,
+            showBankAndChequeDate = vtMeta?.ShowBankAndChequeDate ?? false,
             posted = m.Posted,
             cancelled = m.Cancelled,
             readOnly = m.ReadOnly,
@@ -251,7 +262,7 @@ public sealed class GlJournalVouchersController : ControllerBase
             approvalStatusName = approvalName,
             totalDr = m.TotalDr,
             totalCr = m.TotalCr,
-            journalTitle = journalTitle,
+            journalTitle = vtMeta?.Title,
             enteredAtUtc = m.EnteredAtUtc,
             postedAtUtc = m.PostedAtUtc,
             lines = lines.Select(d =>
@@ -281,13 +292,26 @@ public sealed class GlJournalVouchersController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>Next unused cheque number from the active cheque book when validation is enabled on the bank.</summary>
+    [HttpGet("next-cheque-number")]
+    [HasPermission("accounting.glJournalVouchers.read")]
+    public async Task<IActionResult> GetNextChequeNumber([FromQuery] int bankCashGlAccountId, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        if (bankCashGlAccountId <= 0)
+            return BadRequest(new { message = "bankCashGlAccountId is required." });
+        var svc = new ChequeBookService(_db);
+        var next = await svc.GetNextSuggestedChequeNoAsync(companyId, bankCashGlAccountId, ct);
+        return Ok(new { suggestedChequeNo = next });
+    }
+
     [HttpPost]
     [HasPermission("accounting.glJournalVouchers.create")]
     public async Task<IActionResult> Create([FromBody] GlJournalVoucherWriteDto body, CancellationToken ct)
     {
         var companyId = GetCompanyIdOrThrow();
         var user = await GetCurrentUserAsync(ct);
-        var err = await ValidateWriteAsync(companyId, body, ct);
+        var err = await ValidateWriteAsync(companyId, body, ct, excludeVoucherId: null);
         if (err != null) return err;
 
         var vtRow = await _db.GlVoucherTypes.AsNoTracking()
@@ -314,6 +338,8 @@ public sealed class GlJournalVouchersController : ControllerBase
             ReadOnly = false,
             ApprovalStatusId = draftStatusId,
             BankCashGlAccountId = BankCashIdForPersist(vtRow.SystemType, body.bankCashGlAccountId),
+            ChequeNo = string.IsNullOrWhiteSpace(body.chequeNo) ? null : body.chequeNo.Trim(),
+            ChequeDate = body.chequeDate?.Date,
         };
 
         _db.GlVoucherMains.Add(entity);
@@ -353,7 +379,7 @@ public sealed class GlJournalVouchersController : ControllerBase
         if (string.Equals(st, "deleted", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { message = "This voucher cannot be edited." });
 
-        var err = await ValidateWriteAsync(companyId, body, ct);
+        var err = await ValidateWriteAsync(companyId, body, ct, excludeVoucherId: id);
         if (err != null) return err;
 
         entity.VoucherTypeId = body.voucherTypeId;
@@ -367,6 +393,8 @@ public sealed class GlJournalVouchersController : ControllerBase
         var vtForPersist = await _db.GlVoucherTypes.AsNoTracking()
             .FirstAsync(x => x.Id == body.voucherTypeId && x.Companyid == companyId, ct);
         entity.BankCashGlAccountId = BankCashIdForPersist(vtForPersist.SystemType, body.bankCashGlAccountId);
+        entity.ChequeNo = string.IsNullOrWhiteSpace(body.chequeNo) ? null : body.chequeNo.Trim();
+        entity.ChequeDate = body.chequeDate?.Date;
 
         await ReplaceDetailsAsync(companyId, id, body.lines, ct);
         await _db.SaveChangesAsync(ct);
@@ -675,7 +703,8 @@ public sealed class GlJournalVouchersController : ControllerBase
     private async Task<IActionResult?> ValidateWriteAsync(
         int companyId,
         GlJournalVoucherWriteDto body,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? excludeVoucherId)
     {
         var vt = await _db.GlVoucherTypes.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == body.voucherTypeId && x.Companyid == companyId, ct);
@@ -687,6 +716,15 @@ public sealed class GlJournalVouchersController : ControllerBase
 
         var bankErr = await ValidateBankCashGlAccountAsync(companyId, vt.SystemType, body.bankCashGlAccountId, ct);
         if (bankErr != null) return bankErr;
+
+        var chequeErr = await ValidateChequeBookForBankPaymentIfNeededAsync(
+            companyId,
+            vt,
+            body.bankCashGlAccountId,
+            body.chequeNo,
+            excludeVoucherId,
+            ct);
+        if (chequeErr != null) return chequeErr;
 
         if (body.lines is null || body.lines.Count == 0)
             return BadRequest(new { message = "Add at least one line." });
@@ -727,6 +765,34 @@ public sealed class GlJournalVouchersController : ControllerBase
                 return BadRequest(new { message = "One or more parties are invalid for this company." });
         }
 
+        return null;
+    }
+
+    /// <summary>Bank payment vouchers (bank system type, control credit) may require cheque numbers per bank settings.</summary>
+    private async Task<IActionResult?> ValidateChequeBookForBankPaymentIfNeededAsync(
+        int companyId,
+        GlVoucherType vt,
+        int? bankCashGlAccountId,
+        string? chequeNo,
+        int? excludeVoucherId,
+        CancellationToken ct)
+    {
+        if (vt.SystemType != VoucherSystemTypeBank)
+            return null;
+        if (vt.ControlAccountTxnNature is not byte nature || nature != 1)
+            return null;
+        if (bankCashGlAccountId is null or <= 0)
+            return null;
+
+        var svc = new ChequeBookService(_db);
+        var (ok, err) = await svc.ValidateBankPaymentChequeAsync(
+            companyId,
+            bankCashGlAccountId.Value,
+            chequeNo,
+            excludeVoucherId,
+            ct);
+        if (!ok)
+            return BadRequest(new { message = err });
         return null;
     }
 
@@ -800,10 +866,24 @@ public sealed class GlJournalVouchersController : ControllerBase
         }
         else if (systemType == VoucherSystemTypeCash)
         {
-            var ok = await _db.GenCashInformations.AsNoTracking()
-                .AnyAsync(b => b.CompanyId == companyId && b.CashAccount == bankCashGlAccountId, ct);
-            if (!ok)
+            var cash = await _db.GenCashInformations.AsNoTracking()
+                .FirstOrDefaultAsync(b => b.CompanyId == companyId && b.CashAccount == bankCashGlAccountId, ct);
+            if (cash is null)
                 return BadRequest(new { message = "Select a cash account registered under Cash information." });
+
+            // If a cash account has assigned users, only those users may use it in cash vouchers.
+            var assignedCount = await _db.GenCashInformationUsers.AsNoTracking()
+                .CountAsync(x => x.CashInfoId == cash.Id, ct);
+            if (assignedCount > 0)
+            {
+                var user = await GetCurrentUserAsync(ct);
+                if (user is null)
+                    return Unauthorized();
+                var allowed = await _db.GenCashInformationUsers.AsNoTracking()
+                    .AnyAsync(x => x.CashInfoId == cash.Id && x.UserId == user.Id, ct);
+                if (!allowed)
+                    return BadRequest(new { message = "You are not allowed to use this cash account." });
+            }
         }
 
         return null;
@@ -833,6 +913,11 @@ public sealed class GlJournalVoucherDetailDto
     public string? manualNo { get; set; }
     public int? branchId { get; set; }
     public int? bankCashGlAccountId { get; set; }
+    public string? chequeNo { get; set; }
+    public DateTime? chequeDate { get; set; }
+    public int voucherSystemType { get; set; }
+    public byte? controlAccountTxnNature { get; set; }
+    public bool showBankAndChequeDate { get; set; }
     public bool posted { get; set; }
     public bool cancelled { get; set; }
     public bool readOnly { get; set; }
@@ -873,6 +958,8 @@ public sealed class GlJournalVoucherWriteDto
     public string? manualNo { get; set; }
     public int? branchId { get; set; }
     public int? bankCashGlAccountId { get; set; }
+    public string? chequeNo { get; set; }
+    public DateTime? chequeDate { get; set; }
     public List<GlJournalVoucherLineWriteDto> lines { get; set; } = [];
 }
 

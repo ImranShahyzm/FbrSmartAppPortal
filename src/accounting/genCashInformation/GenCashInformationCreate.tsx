@@ -9,7 +9,7 @@ async function transformCashCreate(data: Record<string, unknown>): Promise<Recor
     const newTitle = String(data.newGlTitle ?? '').trim();
     if (!newCode || !newTitle) {
         throw new Error(
-            'Enter both chart code and chart name so a Bank and Cash GL account (type 9) can be created.'
+            'Enter both chart code and chart name so a Bank and Cash GL account can be created.'
         );
     }
     const res = await apiFetch(
@@ -35,12 +35,10 @@ async function transformCashCreate(data: Record<string, unknown>): Promise<Recor
     if (cashAccount == null || !Number.isFinite(cashAccount) || cashAccount <= 0) {
         throw new Error('Could not read new chart account id from the server.');
     }
-    const branchId = data.branchId;
     return {
         accountTitle: data.accountTitle != null ? String(data.accountTitle) : '',
         cashAccount,
-        branchId:
-            branchId != null && branchId !== '' && Number(branchId) > 0 ? Number(branchId) : null,
+        userIds: Array.isArray(data.userIds) ? (data.userIds as unknown[]).map(x => String(x)) : [],
     };
 }
 
@@ -79,7 +77,11 @@ export function GenCashInformationCreate() {
                 },
             }}
         >
-            <SimpleForm sx={{ maxWidth: 'none', width: '100%' }} toolbar={false} defaultValues={{}}>
+            <SimpleForm
+                sx={{ maxWidth: 'none', width: '100%' }}
+                toolbar={false}
+                defaultValues={{ userIds: [] }}
+            >
                 <GenCashInformationFormInner variant="create" />
             </SimpleForm>
         </Create>

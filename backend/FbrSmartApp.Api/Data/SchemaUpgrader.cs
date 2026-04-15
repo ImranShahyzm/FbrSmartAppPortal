@@ -1484,6 +1484,20 @@ public static class SchemaUpgrader
 
         await db.Database.ExecuteSqlRawAsync(
             """
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvMAIN', 'ChequeNo') IS NULL
+            BEGIN
+                ALTER TABLE dbo.GLvMAIN ADD ChequeNo NVARCHAR(50) NULL;
+            END
+            IF OBJECT_ID('dbo.GLvMAIN', 'U') IS NOT NULL AND COL_LENGTH('dbo.GLvMAIN', 'ChequeDate') IS NULL
+            BEGIN
+                ALTER TABLE dbo.GLvMAIN ADD ChequeDate DATE NULL;
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
             IF OBJECT_ID('dbo.gen_BankInformation', 'U') IS NULL
             BEGIN
                 CREATE TABLE dbo.gen_BankInformation(
@@ -1530,6 +1544,117 @@ public static class SchemaUpgrader
                     AccountTitle NVARCHAR(50) NULL,
                     CashAccount INT NULL,
                     BranchID INT NULL
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_CashInformationUser', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_CashInformationUser(
+                    CashInfoID INT NOT NULL,
+                    UserId UNIQUEIDENTIFIER NOT NULL,
+                    CONSTRAINT PK_gen_CashInformationUser PRIMARY KEY (CashInfoID, UserId),
+                    CONSTRAINT FK_gen_CashInformationUser_CashInfo
+                        FOREIGN KEY (CashInfoID) REFERENCES dbo.gen_CashInformation(CashInfoID) ON DELETE CASCADE
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_CashInformationUser', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_gen_CashInformationUser_Users'
+                    AND parent_object_id = OBJECT_ID(N'dbo.gen_CashInformationUser'))
+              AND OBJECT_ID('dbo.Users', 'U') IS NOT NULL
+            BEGIN
+                ALTER TABLE dbo.gen_CashInformationUser ADD CONSTRAINT FK_gen_CashInformationUser_Users
+                    FOREIGN KEY (UserId) REFERENCES dbo.Users(Id) ON DELETE CASCADE;
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_BankInformation', 'U') IS NOT NULL
+              AND COL_LENGTH('dbo.gen_BankInformation', 'ValidateChequeBook') IS NULL
+            BEGIN
+                ALTER TABLE dbo.gen_BankInformation ADD ValidateChequeBook BIT NOT NULL
+                    CONSTRAINT DF_gen_BankInformation_ValidateChequeBook DEFAULT (0);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_CheckBookInfo', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_CheckBookInfo(
+                    CheckBookID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_CheckBookInfo PRIMARY KEY,
+                    EntryUserID INT NULL,
+                    EntryUserDateTime DATETIME NULL,
+                    ModifyUserID INT NULL,
+                    ModifyUserDateTime DATETIME NULL,
+                    CompanyID INT NULL,
+                    BankId INT NULL,
+                    SerialNoStart NUMERIC(18,0) NULL,
+                    SerialNoEnd NUMERIC(18,0) NULL,
+                    BranchID INT NULL,
+                    IsActive BIT NOT NULL CONSTRAINT DF_gen_CheckBookInfo_IsActive DEFAULT (0)
+                );
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_CheckBookInfo', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_gen_CheckBookInfo_gen_BankInformation'
+                    AND parent_object_id = OBJECT_ID(N'dbo.gen_CheckBookInfo'))
+              AND OBJECT_ID('dbo.gen_BankInformation', 'U') IS NOT NULL
+            BEGIN
+                ALTER TABLE dbo.gen_CheckBookInfo ADD CONSTRAINT FK_gen_CheckBookInfo_gen_BankInformation
+                    FOREIGN KEY (BankId) REFERENCES dbo.gen_BankInformation(BankInfoID);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_CheckBookInfo', 'U') IS NOT NULL
+              AND OBJECT_ID('dbo.gen_BranchInfo', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_gen_CheckBookInfo_gen_BranchInfo'
+                    AND parent_object_id = OBJECT_ID(N'dbo.gen_CheckBookInfo'))
+            BEGIN
+                ALTER TABLE dbo.gen_CheckBookInfo ADD CONSTRAINT FK_gen_CheckBookInfo_gen_BranchInfo
+                    FOREIGN KEY (BranchID) REFERENCES dbo.gen_BranchInfo(BranchID);
+            END
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_CheckBookCancelledSerial', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_CheckBookCancelledSerial(
+                    CheckBookID INT NOT NULL,
+                    SerialNo NUMERIC(18,0) NOT NULL,
+                    CONSTRAINT PK_gen_CheckBookCancelledSerial PRIMARY KEY (CheckBookID, SerialNo),
+                    CONSTRAINT FK_gen_CheckBookCancelledSerial_CheckBook
+                        FOREIGN KEY (CheckBookID) REFERENCES dbo.gen_CheckBookInfo(CheckBookID) ON DELETE CASCADE
                 );
             END
             """,

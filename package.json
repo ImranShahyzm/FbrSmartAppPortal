@@ -38,7 +38,8 @@
     },
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
+        "gen:permission-catalog": "node ./scripts/generate-permission-catalog.mjs",
+        "build": "npm run gen:permission-catalog && tsc && vite build",
         "type-check": "tsc",
         "preview": "vite preview"
     },
