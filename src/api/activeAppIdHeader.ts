@@ -1,5 +1,6 @@
 import {
     ACCOUNTING_SUITE_APP_ID,
+    AUTO_DEALERS_APP_ID,
     DEFAULT_ACTIVE_APP_ID,
     SETTINGS_APP_ID,
 } from '../apps/appsRegistry';
@@ -16,6 +17,7 @@ function inferActiveAppFromPathname(): string {
     const path = window.location.pathname;
     if (path === '/settings' || path.startsWith('/settings/')) return SETTINGS_APP_ID;
     if (path === '/accounting' || path.startsWith('/accounting/')) return ACCOUNTING_SUITE_APP_ID;
+    if (path === '/auto-dealers' || path.startsWith('/auto-dealers/')) return AUTO_DEALERS_APP_ID;
     if (path === '/fbr' || path.startsWith('/fbr/')) return DEFAULT_ACTIVE_APP_ID;
     return DEFAULT_ACTIVE_APP_ID;
 }

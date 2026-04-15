@@ -26,6 +26,7 @@ import { useCanAccess } from '../auth/useCanAccess';
 import { useResolvedActiveAppId } from '../apps/useResolvedActiveAppId';
 import {
     ACCOUNTING_SUITE_APP_ID,
+    AUTO_DEALERS_APP_ID,
     SETTINGS_APP_ID,
 } from '../apps/appsRegistry';
 import { SETTINGS_SECURITY_GROUPS_LIST_PATH, SETTINGS_USERS_LIST_PATH } from '../apps/workspacePaths';
@@ -100,7 +101,46 @@ const Menu = ({ dense = false }: MenuProps) => {
                     leftIcon={<AccountBalanceIcon />}
                     dense={dense}
                 />
-            ) : (
+            ) :  activeAppId === AUTO_DEALERS_APP_ID ? (
+    <>
+        <MenuItemLink
+            to="/color-info"
+            primaryText="Color Info"
+            leftIcon={<Inventory2Icon />}
+            dense={dense}
+        />
+        <MenuItemLink
+            to="/vehicle-group"
+            primaryText="Vehicle Group"
+            leftIcon={<BusinessIcon />}
+            dense={dense}
+        />
+        <MenuItemLink
+            to="/vehicle-info"
+            primaryText="Vehicle Info"
+            leftIcon={<Inventory2Icon />}
+            dense={dense}
+        />
+        <MenuItemLink
+            to="/variant-info"
+            primaryText="Variant Info"
+            leftIcon={<Inventory2Icon />}
+            dense={dense}
+        />
+        <MenuItemLink
+            to="/vehicle-sales-info"
+            primaryText="Vehicle Sales Info"
+            leftIcon={<AccountBalanceIcon />}
+            dense={dense}
+        />
+        <MenuItemLink
+            to="/dispatch-info"
+            primaryText="Dispatch Info"
+            leftIcon={<GavelIcon />}
+            dense={dense}
+        />
+    </>
+) :(
                 <>
             <MenuItemLink
                 to="/fbrInvoices"

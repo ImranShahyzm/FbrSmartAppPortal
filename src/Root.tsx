@@ -19,7 +19,7 @@ import { themes, type ThemeName } from './themes/themes';
 import CompanySignUpPage from './companies/CompanySignUpPage';
 import Login from './layout/Login';
 import { AppShell } from './layout/AppShell';
-import { APPS_REGISTRY, DEFAULT_ACTIVE_APP_ID, ACCOUNTING_SUITE_APP_ID } from './apps/appsRegistry';
+import { APPS_REGISTRY, DEFAULT_ACTIVE_APP_ID, ACCOUNTING_SUITE_APP_ID, AUTO_DEALERS_APP_ID, } from './apps/appsRegistry';
 import { ACTIVE_APP_STORE_KEY } from './apps/activeAppStore';
 import { SETTINGS_SECURITY_GROUPS_LIST_PATH, SETTINGS_USERS_LIST_PATH } from './apps/workspacePaths';
 import { LegacyWorkspacePathRedirect } from './apps/LegacyWorkspacePathRedirect';
@@ -112,7 +112,7 @@ function RootInner() {
         legacyActiveAppMigrated.current = true;
         try {
             const legacy = store.getItem('activeAppId');
-            if (legacy === 'fbr-smart' || legacy === ACCOUNTING_SUITE_APP_ID) {
+            if (legacy === 'fbr-smart' || legacy === ACCOUNTING_SUITE_APP_ID || legacy === AUTO_DEALERS_APP_ID) {
                 setActiveAppId(legacy);
             }
         } catch {
@@ -159,6 +159,8 @@ function RootInner() {
                                 </CoreAdminContext>
                             }
                         />
+                        <Route path="/auto-dealers/login" element={<Navigate to="/login" replace />} />
+<Route path="/auto-dealers/signup" element={<Navigate to="/signup" replace />} />
                         <Route path="/fbr/login" element={<Navigate to="/login" replace />} />
                         <Route path="/accounting/login" element={<Navigate to="/login" replace />} />
                         <Route path="/settings/login" element={<Navigate to="/login" replace />} />

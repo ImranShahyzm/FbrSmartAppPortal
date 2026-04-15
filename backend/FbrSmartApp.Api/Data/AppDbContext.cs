@@ -1,4 +1,6 @@
+using DocumentFormat.OpenXml;
 using FbrSmartApp.Api.Models;
+using FbrSmartApp_Auth.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace FbrSmartApp.Api.Data;
@@ -9,8 +11,13 @@ public sealed class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<ColorInfo> ColorInfos => Set<ColorInfo>();
     public DbSet<Company> Companies => Set<Company>();
-    public DbSet<ProductProfile> ProductProfiles => Set<ProductProfile>();
+    public DbSet<VehicleGroup> VehicleGroups => Set<VehicleGroup>();
+    public DbSet<VehicleInfo> VehicleInfos => Set<VehicleInfo>();
+public DbSet<BankInformation> BankInformations { get; set; }
+
+ public DbSet<ProductProfile> ProductProfiles => Set<ProductProfile>();
     public DbSet<ProductProfileChatterMessage> ProductProfileChatterMessages =>
         Set<ProductProfileChatterMessage>();
     public DbSet<FbrSaleType> FbrSaleTypes => Set<FbrSaleType>();
@@ -56,6 +63,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<GroupMenuGrant> GroupMenuGrants => Set<GroupMenuGrant>();
     public DbSet<SecurityGroupInheritance> SecurityGroupInheritances => Set<SecurityGroupInheritance>();
 
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>(entity =>
@@ -82,7 +90,6 @@ public sealed class AppDbContext : DbContext
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
-
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.HasIndex(x => x.TokenHash).IsUnique();
@@ -682,4 +689,9 @@ public sealed class AppDbContext : DbContext
             entity.HasIndex(x => new { x.CompanyId, x.ResourceKey, x.RecordKey });
         });
     }
+
+}
+
+public class VariantInfo
+{
 }
