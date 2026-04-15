@@ -65,14 +65,14 @@ const customEnglishMessages: TranslationMessages = {
             bank_receipts: 'Bank Receipts',
             cash_receipts: 'Cash Receipts',
             bank_information: 'Bank information',
-            bank_information_subtitle: 'Bank accounts and linked chart postings (GL type 9).',
+            bank_information_subtitle: 'Bank accounts and linked chart postings.',
             bank_chart_section: 'New chart account (Bank & Cash)',
             gen_bank_information_empty:
                 'No bank accounts yet. Create one to link postings to a bank GL account.',
             gen_bank_filters_placeholder:
                 'Use the search box to find banks by title or details. More filters can be added later.',
             cash_information: 'Cash information',
-            cash_information_subtitle: 'Cash boxes and linked chart postings (GL type 9).',
+            cash_information_subtitle: 'Cash boxes and linked chart postings.',
             cash_chart_section: 'New chart account (Bank & Cash)',
             gen_cash_information_empty:
                 'No cash accounts yet. Create one to link postings to a cash GL account.',
@@ -366,6 +366,12 @@ const customEnglishMessages: TranslationMessages = {
             name: 'Bank information |||| Bank information',
             new_gl_hint:
                 'Enter the chart code and name for this bank’s ledger account (Bank & Cash, type 9). It is created when you save.',
+            cheque_books_hint:
+                'Only one cheque book can be active per bank. “Used” reflects bank payments that reference this GL account’s cheque number.',
+            view_serials: 'View cheque numbers',
+            save_bank_first_serials: 'Save the bank once to view serial status.',
+            add_cheque_book: 'Add cheque book',
+            serial_dialog_title: 'Cheque numbers in this book',
             fields: {
                 bank_account_title: 'Account title',
                 bank_account_number: 'Account number',
@@ -374,6 +380,18 @@ const customEnglishMessages: TranslationMessages = {
                 bank_address: 'Bank address',
                 new_gl_code: 'Chart code',
                 new_gl_title: 'Chart name',
+                validate_cheque_book: 'Validate cheque book on bank payments',
+                serial_start: 'Start serial',
+                serial_end: 'End serial',
+                active: 'Active',
+                cheque_no: 'Cheque no.',
+                status: 'Status',
+            },
+            validate_cheque_book_help:
+                'When enabled, bank payments must use a cheque number from the active book (manual numbers are checked against that range).',
+            actions: {
+                mark_cancelled: 'Mark cancelled',
+                cancel_serial: 'Cancel',
             },
         },
         genCashInformation: {
@@ -481,7 +499,11 @@ const customEnglishMessages: TranslationMessages = {
                 journal: 'Journal',
                 voucher_type: 'Voucher type',
                 bank_cash_account: 'Bank / cash account',
+                bank_account: 'Bank account',
+                cash_account: 'Cash account',
                 reference: 'Reference',
+                cheque_no: 'Cheque no.',
+                cheque_date: 'Cheque date',
                 remarks: 'Remarks',
                 status: 'Status',
                 total_dr: 'Debit',

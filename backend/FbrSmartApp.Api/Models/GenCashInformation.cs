@@ -39,4 +39,6 @@ public sealed class GenCashInformation
     public int? BranchId { get; set; }
 
     public GlChartOfAccount? GlAccount { get; set; }
+
+    public ICollection<GenCashInformationUser> AllowedUsers { get; set; } = new List<GenCashInformationUser>();
 }

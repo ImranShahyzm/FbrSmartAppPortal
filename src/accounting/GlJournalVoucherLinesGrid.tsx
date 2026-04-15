@@ -34,6 +34,8 @@ import {
     excelGridInlineFieldSx,
 } from '../common/themeSharedStyles';
 import { formatMoneyInput, formatMoneyTotals, parseMoney } from './glJournalVoucherMoney';
+import type { LineEntryMode } from './glJournalVoucherTransform';
+import { GlJournalLineAccountAutocomplete } from './GlJournalLineAccountAutocomplete';
 
 const COLUMN_STORAGE_KEY = 'gl-journal-voucher-line-columns-v4';
 
@@ -44,6 +46,8 @@ export type GlJournalLineRow = {
     cr: string;
     fbrSalesTaxRateIds: number[];
     partyId: number | null;
+    /** Present when loaded from API; used for PDF / display. */
+    glAccountLabel?: string | null;
 };
 
 type ColumnKey = 'taxes' | 'partner_ref' | 'line_tax_amount';
@@ -108,15 +112,19 @@ const GRID_COL_MIN = {
     actions: 40,
 } as const;
 
-function journalLinesTableMinWidth(columns: Record<ColumnKey, boolean>): number {
+function journalLinesTableMinWidth(
+    columns: Record<ColumnKey, boolean>,
+    hideDebit: boolean,
+    hideCredit: boolean
+): number {
     return (
         GRID_COL_MIN.drag +
         GRID_COL_MIN.account +
         GRID_COL_MIN.narration +
         (columns.taxes ? GRID_COL_MIN.taxes : 0) +
         (columns.partner_ref ? GRID_COL_MIN.partner : 0) +
-        GRID_COL_MIN.debit +
-        GRID_COL_MIN.credit +
+        (hideDebit ? 0 : GRID_COL_MIN.debit) +
+        (hideCredit ? 0 : GRID_COL_MIN.credit) +
         (columns.line_tax_amount ? GRID_COL_MIN.lineTax : 0) +
         GRID_COL_MIN.actions
     );
@@ -168,40 +176,37 @@ const narrationEditMultilineSx = {
     },
 };
 
-/** Draft: multiline auto-expand while editing; blur → one line + dark tooltip on hover (saved or not). Posted: read-only + tooltip. */
+/**
+ * Draft: multiline editor while focused (or when empty). After blur with content, compact single-line
+ * + tooltip on hover. Uses `focused || !hasText` so the first typed character does not collapse the field.
+ */
 function JournalLineNarrationCell(props: { name: string; control: Control<Record<string, unknown>>; readOnly: boolean }) {
     const { name, control, readOnly } = props;
     const { field } = useController({ name, control });
-    const [editing, setEditing] = React.useState(false);
+    const [focused, setFocused] = React.useState(false);
     const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+    const pendingOpenFocusRef = React.useRef(false);
 
     const text = field.value != null ? String(field.value) : '';
     const hasText = text.trim().length > 0;
-    const showEditor = readOnly ? false : editing || !hasText;
+    const showEditor = readOnly ? false : focused || !hasText;
 
-    React.useEffect(() => {
-        if (!editing || readOnly) return;
-        const id = requestAnimationFrame(() => inputRef.current?.focus());
+    const openEditorFromCollapsed = React.useCallback(() => {
+        pendingOpenFocusRef.current = true;
+        setFocused(true);
+    }, []);
+
+    React.useLayoutEffect(() => {
+        if (!pendingOpenFocusRef.current || readOnly || !showEditor) return;
+        pendingOpenFocusRef.current = false;
+        const id = requestAnimationFrame(() => {
+            inputRef.current?.focus();
+        });
         return () => cancelAnimationFrame(id);
-    }, [editing, readOnly]);
+    }, [showEditor, readOnly]);
 
     const truncated = (
         <Box
-            role={readOnly ? undefined : 'button'}
-            tabIndex={readOnly ? -1 : 0}
-            onClick={() => {
-                if (!readOnly) setEditing(true);
-            }}
-            onKeyDown={e => {
-                if (readOnly) return;
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setEditing(true);
-                }
-            }}
-            onFocus={() => {
-                if (!readOnly) setEditing(true);
-            }}
             sx={{
                 width: '100%',
                 minWidth: 0,
@@ -211,10 +216,9 @@ function JournalLineNarrationCell(props: { name: string; control: Control<Record
                 fontSize: 12,
                 lineHeight: 1.2,
                 color: 'text.primary',
-                ...(!readOnly ? { cursor: 'text' } : null),
             }}
         >
-            {hasText ? text : readOnly ? '—' : ''}
+            {hasText ? text : '—'}
         </Box>
     );
 
@@ -237,7 +241,34 @@ function JournalLineNarrationCell(props: { name: string; control: Control<Record
     }
 
     if (!showEditor) {
-        return withTip;
+        return (
+            <Box
+                role="button"
+                tabIndex={0}
+                onClick={() => openEditorFromCollapsed()}
+                onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openEditorFromCollapsed();
+                    }
+                }}
+                onFocus={() => openEditorFromCollapsed()}
+                sx={{
+                    width: '100%',
+                    minWidth: 0,
+                    cursor: 'text',
+                    outline: 'none',
+                    '&:focus-visible': {
+                        outline: '2px solid',
+                        outlineColor: 'primary.main',
+                        outlineOffset: 2,
+                        borderRadius: 0.5,
+                    },
+                }}
+            >
+                {hasText ? withTip : <Box sx={{ fontSize: 12, color: 'text.secondary' }}>—</Box>}
+            </Box>
+        );
     }
 
     return (
@@ -245,9 +276,10 @@ function JournalLineNarrationCell(props: { name: string; control: Control<Record
             name={field.name}
             value={text}
             onChange={field.onChange}
+            onFocus={() => setFocused(true)}
             onBlur={e => {
                 field.onBlur();
-                setEditing(false);
+                setFocused(false);
             }}
             inputRef={el => {
                 field.ref(el);
@@ -276,8 +308,15 @@ const taxAutocompleteSx = {
     },
 };
 
-export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
-    const { readOnly } = props;
+export function GlJournalVoucherLinesGrid(props: {
+    readOnly: boolean;
+    lineEntryMode?: LineEntryMode;
+}) {
+    const { readOnly, lineEntryMode = 'standard' } = props;
+    const hideCredit =
+        lineEntryMode === 'bank_payment_debit_only' || lineEntryMode === 'cash_payment_debit_only';
+    const hideDebit =
+        lineEntryMode === 'bank_receipt_credit_only' || lineEntryMode === 'cash_receipt_credit_only';
     const translate = useTranslate();
     const { control, setValue, getValues } = useFormContext();
     const { fields, append, remove, move } = useFieldArray({ control, name: 'lines' });
@@ -295,11 +334,6 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
         });
     };
 
-    const { data: chartList } = useGetList('glChartAccounts', {
-        pagination: { page: 1, perPage: 2000 },
-        sort: { field: 'glCode', order: 'ASC' },
-    });
-
     const { data: taxList } = useGetList('fbrSalesTaxRates', {
         pagination: { page: 1, perPage: 2000 },
         sort: { field: 'label', order: 'ASC' },
@@ -309,16 +343,6 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
         pagination: { page: 1, perPage: 2000 },
         sort: { field: 'partyName', order: 'ASC' },
     });
-
-    const accountOptions = React.useMemo(() => {
-        const rows = chartList ?? [];
-        return rows.map((r: Record<string, unknown>) => {
-            const id = Number(r.id);
-            const code = String(r.glCode ?? '').trim();
-            const title = String(r.glTitle ?? '').trim();
-            return { id, label: [code, title].filter(Boolean).join(' — ') || `#${id}` };
-        });
-    }, [chartList]);
 
     const taxOptions = React.useMemo(() => {
         const rows = taxList ?? [];
@@ -368,8 +392,9 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
 
     const optCount =
         (columns.taxes ? 1 : 0) + (columns.partner_ref ? 1 : 0) + (columns.line_tax_amount ? 1 : 0);
-    const colSpanFull = 6 + optCount;
-    const totalsLabelColSpan = 3;
+    const baseCols = hideCredit || hideDebit ? 5 : 6;
+    const colSpanFull = baseCols + optCount;
+    const totalsLabelColSpan = hideCredit || hideDebit ? 2 : 3;
 
     const addLine = () => {
         const lines = (getValues('lines') as GlJournalLineRow[] | undefined) ?? [];
@@ -380,7 +405,21 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
             next.fbrSalesTaxRateIds = [...(prev.fbrSalesTaxRateIds ?? [])];
             const pd = parseMoney(prev.dr);
             const pc = parseMoney(prev.cr);
-            if (pd > 0) {
+            if (hideCredit || hideDebit) {
+                if (pd > 0) {
+                    next.dr = hideDebit ? '' : formatMoneyInput(pd);
+                    next.cr = hideCredit ? '' : '';
+                } else if (pc > 0) {
+                    // Receipt mode is credit-only; carry forward previous credit to credit field.
+                    if (hideDebit) {
+                        next.cr = formatMoneyInput(pc);
+                        next.dr = '';
+                    } else {
+                        next.dr = formatMoneyInput(pc);
+                        next.cr = '';
+                    }
+                }
+            } else if (pd > 0) {
                 next.cr = formatMoneyInput(pd);
                 next.dr = '';
             } else if (pc > 0) {
@@ -426,17 +465,19 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
                     name={`lines.${index}.glAccountId`}
                     control={control}
                     render={({ field: f }) => (
-                        <Autocomplete
-                            size="small"
-                            options={accountOptions}
-                            getOptionLabel={o => o.label}
-                            isOptionEqualToValue={(a, b) => a.id === b.id}
-                            value={accountOptions.find(o => o.id === f.value) ?? null}
-                            onChange={(_, v) => f.onChange(v?.id ?? null)}
+                        <GlJournalLineAccountAutocomplete
+                            value={(() => {
+                                const v = f.value;
+                                const n =
+                                    typeof v === 'number'
+                                        ? v
+                                        : v != null && v !== ''
+                                          ? Number(v)
+                                          : NaN;
+                                return Number.isFinite(n) && n > 0 ? n : null;
+                            })()}
+                            onChange={id => f.onChange(id)}
                             disabled={readOnly}
-                            renderInput={params => (
-                                <TextField {...params} variant="standard" sx={excelGridInlineFieldSx} />
-                            )}
                         />
                     )}
                 />
@@ -515,62 +556,68 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
                     />
                 </TableCell>
             ) : null}
-            <TableCell sx={excelGridBodyCellSx} align="right">
-                <Controller
-                    name={`lines.${index}.dr`}
-                    control={control}
-                    render={({ field: f }) => (
-                        <TextField
-                            value={f.value ?? ''}
-                            variant="standard"
-                            disabled={readOnly}
-                            sx={excelGridInlineFieldSx}
-                            inputProps={{
-                                inputMode: 'decimal',
-                                style: { textAlign: 'right' },
-                            }}
-                            onChange={e => {
-                                const raw = e.target.value;
-                                f.onChange(raw);
-                                const n = parseMoney(raw);
-                                if (n !== 0) setValue(`lines.${index}.cr`, '');
-                            }}
-                            onBlur={() => {
-                                const n = parseMoney(f.value);
-                                f.onChange(n === 0 ? '' : formatMoneyInput(n));
-                            }}
-                        />
-                    )}
-                />
-            </TableCell>
-            <TableCell sx={excelGridBodyCellSx} align="right">
-                <Controller
-                    name={`lines.${index}.cr`}
-                    control={control}
-                    render={({ field: f }) => (
-                        <TextField
-                            value={f.value ?? ''}
-                            variant="standard"
-                            disabled={readOnly}
-                            sx={excelGridInlineFieldSx}
-                            inputProps={{
-                                inputMode: 'decimal',
-                                style: { textAlign: 'right' },
-                            }}
-                            onChange={e => {
-                                const raw = e.target.value;
-                                f.onChange(raw);
-                                const n = parseMoney(raw);
-                                if (n !== 0) setValue(`lines.${index}.dr`, '');
-                            }}
-                            onBlur={() => {
-                                const n = parseMoney(f.value);
-                                f.onChange(n === 0 ? '' : formatMoneyInput(n));
-                            }}
-                        />
-                    )}
-                />
-            </TableCell>
+            {hideDebit ? null : (
+                <TableCell sx={excelGridBodyCellSx} align="right">
+                    <Controller
+                        name={`lines.${index}.dr`}
+                        control={control}
+                        render={({ field: f }) => (
+                            <TextField
+                                value={f.value ?? ''}
+                                variant="standard"
+                                disabled={readOnly}
+                                sx={excelGridInlineFieldSx}
+                                inputProps={{
+                                    inputMode: 'decimal',
+                                    style: { textAlign: 'right' },
+                                }}
+                                onChange={e => {
+                                    const raw = e.target.value;
+                                    f.onChange(raw);
+                                    const n = parseMoney(raw);
+                                    if (n !== 0 && !hideCredit) setValue(`lines.${index}.cr`, '');
+                                    if (hideCredit) setValue(`lines.${index}.cr`, '');
+                                    if (hideDebit) setValue(`lines.${index}.dr`, '');
+                                }}
+                                onBlur={() => {
+                                    const n = parseMoney(f.value);
+                                    f.onChange(n === 0 ? '' : formatMoneyInput(n));
+                                }}
+                            />
+                        )}
+                    />
+                </TableCell>
+            )}
+            {hideCredit ? null : (
+                <TableCell sx={excelGridBodyCellSx} align="right">
+                    <Controller
+                        name={`lines.${index}.cr`}
+                        control={control}
+                        render={({ field: f }) => (
+                            <TextField
+                                value={f.value ?? ''}
+                                variant="standard"
+                                disabled={readOnly}
+                                sx={excelGridInlineFieldSx}
+                                inputProps={{
+                                    inputMode: 'decimal',
+                                    style: { textAlign: 'right' },
+                                }}
+                                onChange={e => {
+                                    const raw = e.target.value;
+                                    f.onChange(raw);
+                                    const n = parseMoney(raw);
+                                    if (n !== 0) setValue(`lines.${index}.dr`, '');
+                                }}
+                                onBlur={() => {
+                                    const n = parseMoney(f.value);
+                                    f.onChange(n === 0 ? '' : formatMoneyInput(n));
+                                }}
+                            />
+                        )}
+                    />
+                </TableCell>
+            )}
             {columns.line_tax_amount ? (
                 <TableCell sx={{ ...excelGridBodyCellSx, verticalAlign: 'middle' }} align="right">
                     <Typography variant="body2" sx={{ fontSize: 12, lineHeight: 1.2 }}>
@@ -650,7 +697,7 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
                     stickyHeader
                     sx={{
                         ...excelGridTableSx,
-                        minWidth: journalLinesTableMinWidth(columns),
+                        minWidth: journalLinesTableMinWidth(columns, hideDebit, hideCredit),
                         width: '100%',
                         '& .MuiTableHead-root .MuiTableCell-root': {
                             py: '10px',
@@ -681,12 +728,16 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
                                     {translate('resources.glJournalVouchers.fields.partner')}
                                 </TableCell>
                             ) : null}
-                            <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.debit }} align="right">
-                                {translate('resources.glJournalVouchers.fields.debit')}
-                            </TableCell>
-                            <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.credit }} align="right">
-                                {translate('resources.glJournalVouchers.fields.credit')}
-                            </TableCell>
+                            {hideDebit ? null : (
+                                <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.debit }} align="right">
+                                    {translate('resources.glJournalVouchers.fields.debit')}
+                                </TableCell>
+                            )}
+                            {hideCredit ? null : (
+                                <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.credit }} align="right">
+                                    {translate('resources.glJournalVouchers.fields.credit')}
+                                </TableCell>
+                            )}
                             {columns.line_tax_amount ? (
                                 <TableCell sx={{ ...journalGridThSx, minWidth: GRID_COL_MIN.lineTax }} align="right">
                                     {translate('resources.glJournalVouchers.fields.line_tax_amount')}
@@ -753,12 +804,16 @@ export function GlJournalVoucherLinesGrid(props: { readOnly: boolean }) {
                             </TableCell>
                             {columns.taxes ? <TableCell sx={excelGridBodyCellSx} /> : null}
                             {columns.partner_ref ? <TableCell sx={excelGridBodyCellSx} /> : null}
-                            <TableCell sx={{ ...excelGridBodyCellSx, fontWeight: 700 }} align="right">
-                                {formatMoneyTotals(totalDr)}
-                            </TableCell>
-                            <TableCell sx={{ ...excelGridBodyCellSx, fontWeight: 700 }} align="right">
-                                {formatMoneyTotals(totalCr)}
-                            </TableCell>
+                            {hideDebit ? null : (
+                                <TableCell sx={{ ...excelGridBodyCellSx, fontWeight: 700 }} align="right">
+                                    {formatMoneyTotals(totalDr)}
+                                </TableCell>
+                            )}
+                            {hideCredit ? null : (
+                                <TableCell sx={{ ...excelGridBodyCellSx, fontWeight: 700 }} align="right">
+                                    {formatMoneyTotals(totalCr)}
+                                </TableCell>
+                            )}
                             {columns.line_tax_amount ? (
                                 <TableCell sx={{ ...excelGridBodyCellSx, fontWeight: 700 }} align="right">
                                     {formatMoneyTotals(totalTax)}

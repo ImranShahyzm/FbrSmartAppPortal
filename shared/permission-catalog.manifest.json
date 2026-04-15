@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "apps": [
+    {
+      "appId": "fbr-smart",
+      "permissionsPrefix": "fbr",
+      "displayName": "FBR Smart",
+      "resources": [
+        { "key": "customers", "label": "Customers" },
+        { "key": "fbrInvoices", "label": "FBR Invoices" },
+        { "key": "products", "label": "Products" },
+        { "key": "productProfiles", "label": "Product profiles" },
+        { "key": "fbrScenarios", "label": "FBR scenarios" },
+        { "key": "fbrSalesTaxRates", "label": "Sales tax rates" },
+        { "key": "companies", "label": "Companies" },
+        { "key": "categories", "label": "Categories" },
+        { "key": "reviews", "label": "Reviews" }
+      ]
+    },
+    {
+      "appId": "accounting-suite",
+      "permissionsPrefix": "accounting",
+      "displayName": "Accounting",
+      "resources": [
+        { "key": "glChartAccounts", "label": "Chart of accounts" },
+        { "key": "glVoucherTypes", "label": "Voucher types" },
+        { "key": "glJournalVouchers", "label": "Journal vouchers" },
+        { "key": "glAccountTypes", "label": "GL account types" },
+        { "key": "accountingReports", "label": "Accounting reports" },
+        { "key": "customers", "label": "Customers" },
+        { "key": "genBankInformation", "label": "Bank information" },
+        { "key": "genCashInformation", "label": "Cash information" }
+      ]
+    },
+    {
+      "appId": "settings",
+      "permissionsPrefix": "settings",
+      "displayName": "Settings",
+      "resources": [
+        { "key": "securityGroups", "label": "Security groups" },
+        { "key": "users", "label": "Users" }
+      ]
+    },
+    {
+      "appId": "auto-dealers",
+      "permissionsPrefix": "auto-dealers",
+      "displayName": "Auto Dealers",
+      "resources": [
+        { "key": "securityGroups", "label": "Security groups" },
+        { "key": "users", "label": "Users" }
+      ]
+    }
+  ]
+}

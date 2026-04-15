@@ -14,6 +14,13 @@ function mergeDuplicateDefaults(dup: JournalDuplicateState | undefined): Record<
         raw instanceof Date ? raw : raw != null ? new Date(String(raw)) : new Date();
     const lines =
         dup.lines && dup.lines.length > 0 ? dup.lines : [emptyGlJournalLine(), emptyGlJournalLine()];
+    const rawChq = dup.chequeDate;
+    const chequeDate =
+        rawChq instanceof Date
+            ? rawChq
+            : rawChq != null && rawChq !== ''
+              ? new Date(String(rawChq))
+              : null;
     return {
         voucherTypeId: dup.voucherTypeId,
         voucherDate: Number.isNaN(voucherDate.getTime()) ? new Date() : voucherDate,
@@ -23,6 +30,10 @@ function mergeDuplicateDefaults(dup: JournalDuplicateState | undefined): Record<
             dup.bankCashGlAccountId != null && Number(dup.bankCashGlAccountId) > 0
                 ? Number(dup.bankCashGlAccountId)
                 : null,
+        chequeNo: dup.chequeNo ?? '',
+        chequeDate:
+            chequeDate != null && !Number.isNaN(chequeDate.getTime()) ? chequeDate : null,
+        ...(dup.lineEntryMode ? { lineEntryMode: dup.lineEntryMode } : {}),
         lines,
     };
 }
@@ -39,6 +50,9 @@ export default function GlJournalVoucherCreate() {
             remarks: '',
             manualNo: '',
             bankCashGlAccountId: null as number | null,
+            chequeNo: '',
+            chequeDate: null as Date | null,
+            showBankAndChequeDate: false,
             lines: [emptyGlJournalLine(), emptyGlJournalLine()],
             ...mergeDuplicateDefaults(duplicateDefaults),
         }),

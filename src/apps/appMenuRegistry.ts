@@ -69,6 +69,15 @@ function menusForApp(app: AppRegistryEntry): RegisteredAppMenuEntry[] {
         ];
     }
 
+    // Same workspace as Settings (`SettingsWorkspace`); menu keys must align with permission catalog + URLs.
+    if (id === 'auto-dealers') {
+        return [
+            { menuKey: `${bp}/dashboard`, pathLabel: `${n}/Dashboard`, appId: id },
+            { menuKey: `${bp}/users`, pathLabel: `${n}/Users & Companies/Users`, appId: id },
+            { menuKey: `${bp}/securityGroups`, pathLabel: `${n}/Users & Companies/Security groups`, appId: id },
+        ];
+    }
+
     return [{ menuKey: `${bp}/dashboard`, pathLabel: `${n}/Dashboard`, appId: id }];
 }
 

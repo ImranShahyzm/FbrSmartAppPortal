@@ -82,5 +82,12 @@ public sealed class GlVoucherMain
 
     public GlChartOfAccount? BankCashGlAccount { get; set; }
 
+    [Column("ChequeNo")]
+    [MaxLength(50)]
+    public string? ChequeNo { get; set; }
+
+    [Column("ChequeDate")]
+    public DateTime? ChequeDate { get; set; }
+
     public ICollection<GlVoucherDetail> Details { get; set; } = new List<GlVoucherDetail>();
 }

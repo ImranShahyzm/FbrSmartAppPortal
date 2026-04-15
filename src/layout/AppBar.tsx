@@ -43,13 +43,11 @@ const CustomAppBar = () => {
     const canRecordRuleFieldSetup = useCanAccess(SETTINGS_APP_ID, 'securityGroups', 'write');
     const translate = useTranslate();
     const inAccountingWorkspace = activeAppId === ACCOUNTING_SUITE_APP_ID;
-    const hideTitlePortal =
-        inAccountingWorkspace || activeAppId === SETTINGS_APP_ID;
+    const hideTitlePortal = inAccountingWorkspace || activeAppId === SETTINGS_APP_ID;
     const workspaceAppLabel = React.useMemo(() => {
-        if (!inAccountingWorkspace) return null;
-        const entry = APPS_REGISTRY.find(a => a.id === ACCOUNTING_SUITE_APP_ID);
-        return entry?.name ?? translate('shell.accounting.accounting');
-    }, [inAccountingWorkspace, translate]);
+        const entry = APPS_REGISTRY.find(a => a.id === activeAppId);
+        return entry?.name ?? null;
+    }, [activeAppId]);
 
     if (!odoo) {
         return (
@@ -106,8 +104,7 @@ const CustomAppBar = () => {
                                 fontWeight: 600,
                                 lineHeight: 1.2,
                                 letterSpacing: '0.01em',
-                                color: theme =>
-                                    alpha((theme.vars || theme).palette.secondary.contrastText, 0.88),
+                                color: '#FFFFF0',
                                 display: { xs: 'none', sm: 'inline' },
                             }}
                         >

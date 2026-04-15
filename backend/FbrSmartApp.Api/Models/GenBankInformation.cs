@@ -47,5 +47,10 @@ public sealed class GenBankInformation
     [Column("BankAddress")]
     public string? BankAddress { get; set; }
 
+    [Column("ValidateChequeBook")]
+    public bool ValidateChequeBook { get; set; }
+
     public GlChartOfAccount? GlAccount { get; set; }
+
+    public ICollection<GenCheckBookInfo> CheckBooks { get; set; } = new List<GenCheckBookInfo>();
 }

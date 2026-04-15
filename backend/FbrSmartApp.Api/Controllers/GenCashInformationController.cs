@@ -73,7 +73,7 @@ public sealed class GenCashInformationController : ControllerBase
 
         var take = Math.Min(to - from + 1, 1000);
         var rows = await query.Skip(from).Take(take).ToListAsync(ct);
-        var dtos = rows.Select(ToDto).ToList();
+        var dtos = rows.Select(x => ToDto(x, Array.Empty<Guid>())).ToList();
 
         Response.Headers.ContentRange =
             $"genCashInformation {from}-{from + Math.Max(dtos.Count - 1, 0)}/{total}";
@@ -89,7 +89,11 @@ public sealed class GenCashInformationController : ControllerBase
         var x = await _db.GenCashInformations.AsNoTracking()
             .FirstOrDefaultAsync(b => b.Id == id && b.CompanyId == companyId, ct);
         if (x is null) return NotFound();
-        return Ok(ToDto(x));
+        var userIds = await _db.GenCashInformationUsers.AsNoTracking()
+            .Where(u => u.CashInfoId == id)
+            .Select(u => u.UserId)
+            .ToListAsync(ct);
+        return Ok(ToDto(x, userIds));
     }
 
     [HttpPost]
@@ -111,12 +115,17 @@ public sealed class GenCashInformationController : ControllerBase
             CompanyId = companyId,
             AccountTitle = string.IsNullOrWhiteSpace(body.accountTitle) ? null : body.accountTitle.Trim(),
             CashAccount = body.cashAccount,
-            BranchId = body.branchId,
             EntryUserDateTime = now,
         };
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
         _db.GenCashInformations.Add(entity);
         await _db.SaveChangesAsync(ct);
-        return CreatedAtAction(nameof(GetOne), new { id = entity.Id }, ToDto(entity));
+
+        await ReplaceUsersAsync(companyId, entity.Id, body.userIds, ct);
+        await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return CreatedAtAction(nameof(GetOne), new { id = entity.Id }, await ToDtoAsync(entity.Id, ct));
     }
 
     [HttpPut("{id:int}")]
@@ -136,9 +145,12 @@ public sealed class GenCashInformationController : ControllerBase
 
         entity.AccountTitle = string.IsNullOrWhiteSpace(body.accountTitle) ? null : body.accountTitle.Trim();
         entity.CashAccount = body.cashAccount;
-        entity.BranchId = body.branchId;
         entity.ModifyUserDateTime = DateTime.UtcNow;
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        await ReplaceUsersAsync(companyId, id, body.userIds, ct);
         await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return await GetOne(id, ct);
     }
 
@@ -154,18 +166,70 @@ public sealed class GenCashInformationController : ControllerBase
         return NoContent();
     }
 
-    private static object ToDto(GenCashInformation x) => new
+    private static object ToDto(GenCashInformation x, IReadOnlyList<Guid> userIds) => new
     {
         id = x.Id,
         companyId = x.CompanyId,
         accountTitle = x.AccountTitle,
         cashAccount = x.CashAccount,
-        branchId = x.BranchId,
         entryUserId = x.EntryUserId,
         entryUserDateTime = x.EntryUserDateTime,
         modifyUserId = x.ModifyUserId,
         modifyUserDateTime = x.ModifyUserDateTime,
+        userIds = userIds.Select(u => u.ToString()).ToList(),
     };
+
+    private async Task<object> ToDtoAsync(int id, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        var x = await _db.GenCashInformations.AsNoTracking()
+            .FirstAsync(b => b.Id == id && b.CompanyId == companyId, ct);
+        var userIds = await _db.GenCashInformationUsers.AsNoTracking()
+            .Where(u => u.CashInfoId == id)
+            .Select(u => u.UserId)
+            .ToListAsync(ct);
+        return ToDto(x, userIds);
+    }
+
+    private async Task ReplaceUsersAsync(int companyId, int cashInfoId, List<string>? userIds, CancellationToken ct)
+    {
+        var parsed = new HashSet<Guid>();
+        foreach (var s in userIds ?? [])
+        {
+            if (Guid.TryParse(s, out var g))
+                parsed.Add(g);
+        }
+
+        // Only keep users in this company (defense in depth).
+        if (parsed.Count > 0)
+        {
+            var ok = await _db.Users.AsNoTracking()
+                .Where(u => parsed.Contains(u.Id) && u.CompanyId == companyId)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            parsed = ok.ToHashSet();
+        }
+
+        var existing = await _db.GenCashInformationUsers
+            .Where(x => x.CashInfoId == cashInfoId)
+            .ToListAsync(ct);
+
+        var keep = parsed;
+        foreach (var row in existing)
+        {
+            if (!keep.Contains(row.UserId))
+                _db.GenCashInformationUsers.Remove(row);
+        }
+        foreach (var uid in keep)
+        {
+            if (existing.Any(x => x.UserId == uid)) continue;
+            _db.GenCashInformationUsers.Add(new GenCashInformationUser
+            {
+                CashInfoId = cashInfoId,
+                UserId = uid,
+            });
+        }
+    }
 
     private int GetCompanyIdOrThrow()
     {
@@ -180,5 +244,5 @@ public sealed class GenCashInformationWriteDto
 {
     public int? cashAccount { get; set; }
     public string? accountTitle { get; set; }
-    public int? branchId { get; set; }
+    public List<string>? userIds { get; set; }
 }

@@ -37,6 +37,7 @@ import { GlJournalVoucherPdfDocument } from './GlJournalVoucherPdf';
 import { buildGlJournalVoucherPdfProps, chartAccountDisplayLabel } from './glJournalVoucherPrintModel';
 import { buildJournalDuplicatePayload, navigateToJournalDuplicate } from './glJournalVoucherDuplicate';
 import { parseMoney } from './glJournalVoucherMoney';
+import type { LineEntryMode } from './glJournalVoucherTransform';
 
 const GL_JOURNAL_VOUCHERS_THREAD_KEY = 'glJournalVouchers';
 
@@ -68,7 +69,7 @@ function JournalDocHeading({
     return (
         <Box sx={{ mb: 2, pr: { xs: 5, sm: 7 } }}>
             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                {translate('resources.glJournalVouchers.document_label', { _: 'Journal voucher' })}
+                {translate('resources.glJournalVouchers.document_label')}
             </Typography>
             <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2, fontSize: '1.25rem' }}>
                 {isCreate
@@ -130,16 +131,16 @@ function JournalVoucherWorkflowBar({
     );
 
     const breadcrumbStages = [
-        { key: 'draft', label: translate('resources.glJournalVouchers.workflow.draft', { _: 'Draft' }) },
+        { key: 'draft', label: translate('resources.glJournalVouchers.workflow.draft') },
         {
             key: 'approved',
-            label: translate('resources.glJournalVouchers.workflow.approved', { _: 'Approved' }),
+            label: translate('resources.glJournalVouchers.workflow.approved'),
         },
         {
             key: 'confirmed',
-            label: translate('resources.glJournalVouchers.workflow.confirmed', { _: 'Confirmed' }),
+            label: translate('resources.glJournalVouchers.workflow.confirmed'),
         },
-        { key: 'posted', label: translate('resources.glJournalVouchers.workflow.posted', { _: 'Posted' }) },
+        { key: 'posted', label: translate('resources.glJournalVouchers.workflow.posted') },
     ];
 
     const isDeleted = st === 'deleted' || cancelled;
@@ -148,7 +149,7 @@ function JournalVoucherWorkflowBar({
         ? [
               {
                   key: 'deleted',
-                  label: translate('resources.glJournalVouchers.workflow.deleted', { _: 'Deleted' }),
+                  label: translate('resources.glJournalVouchers.workflow.deleted'),
               },
           ]
         : breadcrumbStages;
@@ -171,16 +172,10 @@ function JournalVoucherWorkflowBar({
                 phase === 'post'
                     ? translate('resources.glJournalVouchers.posted_ok')
                     : phase === 'approve'
-                      ? translate('resources.glJournalVouchers.notifications.approved_ok', {
-                            _: 'Voucher approved.',
-                        })
+                      ? translate('resources.glJournalVouchers.notifications.approved_ok')
                       : phase === 'confirm'
-                        ? translate('resources.glJournalVouchers.notifications.confirmed_ok', {
-                              _: 'Voucher confirmed.',
-                          })
-                        : translate('resources.glJournalVouchers.notifications.void_ok', {
-                              _: 'Voucher voided.',
-                          });
+                        ? translate('resources.glJournalVouchers.notifications.confirmed_ok')
+                        : translate('resources.glJournalVouchers.notifications.void_ok');
             notify(okMsg, { type: 'success' });
             refresh();
         } catch {
@@ -206,7 +201,7 @@ function JournalVoucherWorkflowBar({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 {canApprove ? (
                     <WorkflowActionButton
-                        label={translate('resources.glJournalVouchers.actions.approve', { _: 'Approve' })}
+                        label={translate('resources.glJournalVouchers.actions.approve')}
                         variant="primary"
                         loading={loading === 'approve'}
                         disabled={loading !== null}
@@ -215,7 +210,7 @@ function JournalVoucherWorkflowBar({
                 ) : null}
                 {canConfirm ? (
                     <WorkflowActionButton
-                        label={translate('resources.glJournalVouchers.actions.confirm', { _: 'Confirm' })}
+                        label={translate('resources.glJournalVouchers.actions.confirm')}
                         variant="primary"
                         loading={loading === 'confirm'}
                         disabled={loading !== null}
@@ -224,7 +219,7 @@ function JournalVoucherWorkflowBar({
                 ) : null}
                 {canPost ? (
                     <WorkflowActionButton
-                        label={translate('resources.glJournalVouchers.actions.post', { _: 'Post' })}
+                        label={translate('resources.glJournalVouchers.actions.post')}
                         variant="primary"
                         loading={loading === 'post'}
                         disabled={loading !== null}
@@ -233,7 +228,7 @@ function JournalVoucherWorkflowBar({
                 ) : null}
                 {canVoid ? (
                     <WorkflowActionButton
-                        label={translate('resources.glJournalVouchers.actions.void', { _: 'Void' })}
+                        label={translate('resources.glJournalVouchers.actions.void')}
                         variant="danger"
                         loading={loading === 'void'}
                         disabled={loading !== null}
@@ -254,11 +249,20 @@ export type GlJournalVoucherFormProps = {
     bankCashLinkKind?: 'bank' | 'cash';
     /** Optional create screen title (translation string passed from parent). */
     createDocumentTitle?: string;
+    /** Create flow: bank payment uses debit-only lines + paired bank credits on save. */
+    lineEntryMode?: LineEntryMode;
+    /** Show cheque fields even before voucher type metadata loads (e.g. bank payment create). */
+    forceShowChequeFields?: boolean;
 };
 
 export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
-    const { variant, voucherTypeFilter: voucherTypeFilterProp, bankCashLinkKind: bankCashLinkKindProp } =
-        props;
+    const {
+        variant,
+        voucherTypeFilter: voucherTypeFilterProp,
+        bankCashLinkKind: bankCashLinkKindProp,
+        lineEntryMode: lineEntryModeProp,
+        forceShowChequeFields: forceShowChequeFieldsProp,
+    } = props;
     const translate = useTranslate();
     const notify = useNotify();
     const record = useRecordContext<Record<string, unknown>>();
@@ -284,12 +288,34 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
     const linesForm = watch('lines') as GlJournalLineRow[] | undefined;
     const liveDr = linesForm?.reduce((s, l) => s + parseMoney(l?.dr), 0) ?? 0;
     const liveCr = linesForm?.reduce((s, l) => s + parseMoney(l?.cr), 0) ?? 0;
-    const canPostBalance =
-        (linesForm?.length ?? 0) > 0 && Math.abs(liveDr - liveCr) < 0.0005 && liveDr > 0;
+    const lineEntryModeW = useWatch({ name: 'lineEntryMode' }) as LineEntryMode | undefined;
+    const effectiveLineEntryMode: LineEntryMode = lineEntryModeProp ?? lineEntryModeW ?? 'standard';
+    const debitOnly =
+        effectiveLineEntryMode === 'bank_payment_debit_only' ||
+        effectiveLineEntryMode === 'cash_payment_debit_only';
+    const creditOnly =
+        effectiveLineEntryMode === 'bank_receipt_credit_only' ||
+        effectiveLineEntryMode === 'cash_receipt_credit_only';
+    const bankPaymentDebitOnly = effectiveLineEntryMode === 'bank_payment_debit_only';
+    const hasDebitLines =
+        (linesForm ?? []).some(l => Number(l?.glAccountId) > 0 && parseMoney(l?.dr) > 0) ?? false;
+    const hasCreditLines =
+        (linesForm ?? []).some(l => Number(l?.glAccountId) > 0 && parseMoney(l?.cr) > 0) ?? false;
+    const noUserCredit =
+        (linesForm ?? []).every(l => parseMoney(l?.cr) < 0.0005) ?? true;
+    const noUserDebit =
+        (linesForm ?? []).every(l => parseMoney(l?.dr) < 0.0005) ?? true;
+    const canPostBalance = debitOnly
+        ? hasDebitLines && noUserCredit && liveDr > 0
+        : creditOnly
+          ? hasCreditLines && noUserDebit && liveCr > 0
+          : (linesForm?.length ?? 0) > 0 && Math.abs(liveDr - liveCr) < 0.0005 && liveDr > 0;
 
     const isCreate = variant === 'create';
 
     const voucherTypeIdW = useWatch({ name: 'voucherTypeId' }) as number | string | null | undefined;
+    const bankCashGlAccountIdW = useWatch({ name: 'bankCashGlAccountId' }) as number | string | null | undefined;
+    const chequeNoW = useWatch({ name: 'chequeNo' }) as string | null | undefined;
 
     const [resolvedBankCashKind, setResolvedBankCashKind] = React.useState<'bank' | 'cash' | null>(null);
 
@@ -322,6 +348,11 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
 
     const bankCashLinkKind = resolvedBankCashKind ?? undefined;
 
+    const showBankAndChequeDateW = useWatch({ name: 'showBankAndChequeDate' }) as boolean | undefined;
+    const showChequeFields =
+        Boolean(forceShowChequeFieldsProp) ||
+        (Boolean(showBankAndChequeDateW) && Boolean(bankCashLinkKind));
+
     const voucherTypeFilter = React.useMemo(() => {
         if (!isCreate && voucherTypeIdW != null && voucherTypeIdW !== '')
             return { ids: [Number(voucherTypeIdW)] };
@@ -344,35 +375,109 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
         };
     }, [bankCashLinkKind, dataProvider, isCreate, setValue, voucherTypeIdW]);
 
+    React.useEffect(() => {
+        if (voucherTypeIdW == null || voucherTypeIdW === '') return;
+        let cancelled = false;
+        void dataProvider
+            .getOne('glVoucherTypes', { id: voucherTypeIdW })
+            .then(({ data }) => {
+                if (cancelled) return;
+                const d = data as Record<string, unknown>;
+                setValue('showBankAndChequeDate', Boolean(d.showBankAndChequeDate), { shouldDirty: false });
+            })
+            .catch(() => {
+                /* ignore */
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [dataProvider, setValue, voucherTypeIdW]);
+
+    /** Bank payment create: suggest next free cheque from active book when the field is still empty. */
+    React.useEffect(() => {
+        if (!isCreate || !bankPaymentDebitOnly || readOnly) return;
+        const gla =
+            bankCashGlAccountIdW != null && bankCashGlAccountIdW !== ''
+                ? Number(bankCashGlAccountIdW)
+                : NaN;
+        if (!Number.isFinite(gla) || gla <= 0) return;
+        const currentCheque = String(chequeNoW ?? '').trim();
+        // If the user manually typed something different, don't overwrite it.
+        // If the value is empty, or it was auto-filled for a different bank, refresh it.
+        const lastAuto = (GlJournalVoucherForm as any)._lastAutoCheque as
+            | { glAccountId: number; chequeNo: string }
+            | undefined;
+        const canOverwrite =
+            currentCheque === '' ||
+            (lastAuto != null && lastAuto.chequeNo === currentCheque && lastAuto.glAccountId !== gla);
+        if (!canOverwrite) return;
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            void (async () => {
+                try {
+                    const res = await apiFetch(
+                        `/api/glJournalVouchers/next-cheque-number?bankCashGlAccountId=${gla}`,
+                        { method: 'GET' },
+                        { auth: true, retryOn401: true }
+                    );
+                    if (!res.ok || cancelled) return;
+                    const j = (await res.json()) as { suggestedChequeNo?: string | null };
+                    if (cancelled) return;
+                    const cur = String(getValues('chequeNo') ?? '').trim();
+                    if ((cur === '' || (lastAuto != null && lastAuto.chequeNo === cur)) && j.suggestedChequeNo) {
+                        setValue('chequeNo', j.suggestedChequeNo, { shouldDirty: false });
+                        (GlJournalVoucherForm as any)._lastAutoCheque = {
+                            glAccountId: gla,
+                            chequeNo: j.suggestedChequeNo,
+                        };
+                    }
+                } catch {
+                    /* ignore */
+                }
+            })();
+        }, 400);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [
+        isCreate,
+        bankPaymentDebitOnly,
+        readOnly,
+        bankCashGlAccountIdW,
+        chequeNoW,
+        getValues,
+        setValue,
+    ]);
+
     const onDuplicateJournal = React.useCallback(() => {
         const values = getValues() as Record<string, unknown>;
         if (!values.voucherTypeId) {
             notify(
-                translate('resources.glJournalVouchers.duplicate_need_type', {
-                    _: 'Select a voucher type before duplicating.',
-                }),
+                translate('resources.glJournalVouchers.duplicate_need_type'),
                 { type: 'warning' }
             );
             return;
         }
-        const payload = buildJournalDuplicatePayload(values);
+        const payload = buildJournalDuplicatePayload({
+            ...values,
+            voucherSystemType: values.voucherSystemType ?? record?.voucherSystemType,
+            controlAccountTxnNature: values.controlAccountTxnNature ?? record?.controlAccountTxnNature,
+            lineEntryMode: values.lineEntryMode ?? record?.lineEntryMode,
+        });
         navigateToJournalDuplicate(navigate, location, payload);
         notify(
-            translate('resources.glJournalVouchers.duplicate_opening', {
-                _: 'Opened a new voucher with copied lines.',
-            }),
+            translate('resources.glJournalVouchers.duplicate_opening'),
             { type: 'success' }
         );
-    }, [getValues, location, navigate, notify, translate]);
+    }, [getValues, location, navigate, notify, record, translate]);
 
     const onPrintJournalPdf = React.useCallback(async () => {
         const values = getValues() as Record<string, unknown>;
         const vtId = values.voucherTypeId;
         if (!vtId) {
             notify(
-                translate('resources.glJournalVouchers.print_need_type', {
-                    _: 'Select a voucher type before printing.',
-                }),
+                translate('resources.glJournalVouchers.print_need_type'),
                 { type: 'warning' }
             );
             return;
@@ -380,8 +485,10 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
         try {
             const { data: vtRaw } = await dataProvider.getOne('glVoucherTypes', { id: vtId });
             const vt = vtRaw as Record<string, unknown>;
-            const formLines = (values.lines as GlJournalLineRow[]) ?? [];
-            const recLines = (record?.lines as Record<string, unknown>[]) ?? [];
+            const formLines =
+                (record?.linesFull as GlJournalLineRow[] | undefined) ??
+                ((values.lines as GlJournalLineRow[]) ?? []);
+            const recLines = (record?.linesFull ?? record?.lines ?? []) as Record<string, unknown>[];
             const accountIds = Array.from(
                 new Set(formLines.map(l => l.glAccountId).filter((x): x is number => Number(x) > 0))
             );
@@ -397,6 +504,8 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                 }
             }
             const lineDisplayLabels = formLines.map((l, i) => {
+                const fromLine = l.glAccountLabel;
+                if (fromLine != null && String(fromLine).trim() !== '') return String(fromLine).trim();
                 const fromRec = recLines[i]?.glAccountLabel ?? recLines[i]?.glaccountlabel;
                 if (fromRec != null && String(fromRec).trim() !== '') return String(fromRec).trim();
                 if (l.glAccountId && labelById[l.glAccountId]) return labelById[l.glAccountId];
@@ -444,12 +553,12 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
         () => [
             {
                 key: 'duplicate',
-                label: translate('resources.glJournalVouchers.actions.duplicate', { _: 'Duplicate' }),
+                label: translate('resources.glJournalVouchers.actions.duplicate'),
                 onClick: onDuplicateJournal,
             },
             {
                 key: 'print',
-                label: translate('resources.glJournalVouchers.actions.print_pdf', { _: 'Print PDF' }),
+                label: translate('resources.glJournalVouchers.actions.print_pdf'),
                 onClick: onPrintJournalPdf,
             },
         ],
@@ -541,11 +650,9 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                 />
 
                                 <Grid container columnSpacing={4} rowSpacing={0}>
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <JournalFieldRow
-                                            label={translate('resources.glJournalVouchers.fields.voucher_type', {
-                                                _: 'Voucher type',
-                                            })}
+                                            label={translate('resources.glJournalVouchers.fields.voucher_type')}
                                         >
                                             <ReferenceInput
                                                 source="voucherTypeId"
@@ -570,14 +677,29 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                             </ReferenceInput>
                                         </JournalFieldRow>
                                     </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <JournalFieldRow
+                                            label={translate('resources.glJournalVouchers.fields.voucher_date')}
+                                        >
+                                            <DateInput
+                                                source="voucherDate"
+                                                label={false}
+                                                variant="standard"
+                                                margin="none"
+                                                size="small"
+                                                fullWidth
+                                                disabled={readOnly}
+                                                sx={JV_UNDERLINE_FIELD_SX}
+                                            />
+                                        </JournalFieldRow>
+                                    </Grid>
                                     {bankCashLinkKind ? (
-                                        <Grid size={{ xs: 12 }}>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
                                             <JournalFieldRow
                                                 label={translate(
-                                                    'resources.glJournalVouchers.fields.bank_cash_account',
-                                                    {
-                                                        _: 'Bank / cash account',
-                                                    }
+                                                    bankCashLinkKind === 'bank'
+                                                        ? 'resources.glJournalVouchers.fields.bank_account'
+                                                        : 'resources.glJournalVouchers.fields.cash_account'
                                                 )}
                                             >
                                                 <ReferenceInput
@@ -586,6 +708,9 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                                     perPage={200}
                                                     filter={{
                                                         bankCashLinkKind,
+                                                        ...(bankCashLinkKind === 'cash'
+                                                            ? { cashUserScope: true }
+                                                            : {}),
                                                     }}
                                                 >
                                                     <CompactAutocompleteInput
@@ -612,22 +737,6 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                         </Grid>
                                     ) : null}
                                     <Grid size={{ xs: 12, sm: 6 }}>
-                                        <JournalFieldRow
-                                            label={translate('resources.glJournalVouchers.fields.voucher_date')}
-                                        >
-                                            <DateInput
-                                                source="voucherDate"
-                                                label={false}
-                                                variant="standard"
-                                                margin="none"
-                                                size="small"
-                                                fullWidth
-                                                disabled={readOnly}
-                                                sx={JV_UNDERLINE_FIELD_SX}
-                                            />
-                                        </JournalFieldRow>
-                                    </Grid>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <JournalFieldRow label={translate('resources.glJournalVouchers.fields.reference')}>
                                             <TextInput
                                                 source="manualNo"
@@ -641,6 +750,42 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                             />
                                         </JournalFieldRow>
                                     </Grid>
+                                    {showChequeFields ? (
+                                        <>
+                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                                <JournalFieldRow
+                                                    label={translate('resources.glJournalVouchers.fields.cheque_no')}
+                                                >
+                                                    <TextInput
+                                                        source="chequeNo"
+                                                        label={false}
+                                                        variant="standard"
+                                                        margin="none"
+                                                        size="small"
+                                                        fullWidth
+                                                        disabled={readOnly}
+                                                        sx={JV_UNDERLINE_FIELD_SX}
+                                                    />
+                                                </JournalFieldRow>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                                <JournalFieldRow
+                                                    label={translate('resources.glJournalVouchers.fields.cheque_date')}
+                                                >
+                                                    <DateInput
+                                                        source="chequeDate"
+                                                        label={false}
+                                                        variant="standard"
+                                                        margin="none"
+                                                        size="small"
+                                                        fullWidth
+                                                        disabled={readOnly}
+                                                        sx={JV_UNDERLINE_FIELD_SX}
+                                                    />
+                                                </JournalFieldRow>
+                                            </Grid>
+                                        </>
+                                    ) : null}
                                     <Grid size={{ xs: 12 }}>
                                         <JournalFieldRow label={translate('resources.glJournalVouchers.fields.remarks')}>
                                             <TextInput
@@ -660,7 +805,10 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                 </Grid>
 
                                 <Box sx={{ mt: 2, minWidth: 0, maxWidth: '100%' }}>
-                                    <GlJournalVoucherLinesGrid readOnly={readOnly} />
+                                    <GlJournalVoucherLinesGrid
+                                        readOnly={readOnly}
+                                        lineEntryMode={effectiveLineEntryMode}
+                                    />
                                 </Box>
                             </CardContent>
                         </Card>

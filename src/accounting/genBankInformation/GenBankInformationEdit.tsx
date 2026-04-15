@@ -3,17 +3,21 @@ import { Edit, HttpError, SimpleForm, useNotify } from 'react-admin';
 
 import { SplitFormLayout } from '../../common/layout/SplitFormLayout';
 import { RecordThreadPanel } from '../../common/recordThread';
+import { mapCheckBooksToApi } from './checkBookPayload';
 import { GenBankInformationFormInner } from './GenBankInformationFormInner';
 
 const GEN_BANK_INFORMATION_THREAD_KEY = 'genBankInformation';
 
 async function transformBankUpdate(data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const checkBooks = mapCheckBooksToApi(data);
     return {
         bankAccountTitle: data.bankAccountTitle != null ? String(data.bankAccountTitle) : '',
         bankAccountNumber: data.bankAccountNumber != null ? String(data.bankAccountNumber) : '',
         bankName: data.bankName != null ? String(data.bankName) : '',
         bankBranchCode: data.bankBranchCode != null ? String(data.bankBranchCode) : '',
         bankAddress: data.bankAddress != null ? String(data.bankAddress) : '',
+        validateChequeBook: Boolean(data.validateChequeBook),
+        checkBooks,
     };
 }
 
