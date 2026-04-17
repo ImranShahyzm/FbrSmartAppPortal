@@ -290,7 +290,7 @@ const customEnglishMessages: TranslationMessages = {
             },
         },
         fbrInvoices: {
-            name: 'FBR Invoice |||| FBR Invoices',
+            name: 'abc |||| abc',
             create_title: 'Create invoice',
             new_invoice_title: 'New invoice',
             reference_after_save: 'Assigned automatically when you save.',
@@ -298,6 +298,17 @@ const customEnglishMessages: TranslationMessages = {
                 'Save the invoice once to enable chatter and attachments.',
             chatter: {
                 stored_on_server: 'Notes and attachments are saved on the server with this invoice.',
+            },
+        },
+          colorInfo: {
+            name: 'Color Info |||| Colors Info',
+            create_title: 'Create color Information', 
+            new_invoice_title: 'New color Information',
+            reference_after_save: 'Assigned automatically when you save.',
+            chatter_after_save:
+                'Save the color information once to enable chatter and attachments.',
+            chatter: {
+                stored_on_server: 'Notes and attachments are saved on the server with this color information.',
             },
         },
         fbrScenarios: {

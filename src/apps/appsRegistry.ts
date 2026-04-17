@@ -10,7 +10,9 @@ const AccountingWorkspace = React.lazy(() =>
 const SettingsWorkspace = React.lazy(() =>
     import('./SettingsWorkspace').then(m => ({ default: m.SettingsWorkspace }))
 );
-
+const AutoDealerWorkspace = React.lazy(() =>
+    import('./AutoDealersWorkspace').then(m => ({ default: m.AutoDealersWorkspace }))
+);
 export type AppRegistryEntry = {
     id: string;
     name: string;
@@ -73,7 +75,7 @@ export const APPS_REGISTRY: AppRegistryEntry[] = [
         accentColor: '#2E7D32',
         permissionsPrefix: 'auto-dealers',
         basePath: '/auto-dealers',
-        WorkspaceComponent: SettingsWorkspace,
+        WorkspaceComponent: AutoDealerWorkspace,
     },
     {
         id: SETTINGS_APP_ID,
