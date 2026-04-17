@@ -39,7 +39,7 @@ public class VehicleInfoController : ControllerBase
             return Ok(data);
         }
 
-        // ✅ Create
+        /// <summary>Creates a vehicle; typically called after <c>VehicleGroup</c> create, with <see cref="VehicleInfo.VehicleCode"/> and <see cref="VehicleInfo.VehicleTitle"/> set to the group title.</summary>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] VehicleInfo model)
         {

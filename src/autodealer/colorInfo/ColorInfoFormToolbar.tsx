@@ -1,6 +1,6 @@
 import {
     FormHeaderToolbar,
-    FORM_SAVE_CUSTOMER,
+    FORM_SAVE_COLOR_INFORMATION,
 } from '../../common/formToolbar';
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
 export function ColorInformationFormToolbar({ showDelete }: Props) {
     return (
         <FormHeaderToolbar
-            saveEventName={FORM_SAVE_CUSTOMER}
+            saveEventName={FORM_SAVE_COLOR_INFORMATION}
             resource="colorInformation"
             listPath="/colorInformation"
             showDelete={showDelete}

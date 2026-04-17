@@ -300,8 +300,13 @@ const customEnglishMessages: TranslationMessages = {
                 stored_on_server: 'Notes and attachments are saved on the server with this invoice.',
             },
         },
+        salesServiceInfo: {
+            name: 'Sales Service Information |||| Sales Service Information',
+        },
           colorInfo: {
             name: 'Color Info |||| Colors Info',
+            document: 'Color',
+            subtitle: 'All changes are saved on the server.',
             create_title: 'Create color Information', 
             new_invoice_title: 'New color Information',
             reference_after_save: 'Assigned automatically when you save.',

@@ -1,53 +1,55 @@
 import * as React from 'react';
-import { Edit, SimpleForm, TextInput, required } from 'react-admin';
-import { Box, Typography, Paper } from '@mui/material';
-import { FormHeaderToolbar, FormSaveBridge, FORM_SAVE_CUSTOMER } from '../../common/formToolbar';
+import { Edit, PrevNextButtons, SimpleForm, TextInput, required, useRecordContext, useTranslate } from 'react-admin';
+import { Box } from '@mui/material';
+
+import {
+    FormDocumentWorkflowBar,
+    FormSaveBridge,
+    FORM_SAVE_COLOR_INFORMATION,
+} from '../../common/formToolbar';
+
+function ColorEditHeader() {
+    const translate = useTranslate();
+    const record = useRecordContext<{ colorTitle?: string; id?: string | number }>();
+    const title = String(record?.colorTitle ?? '').trim();
+    const displayTitle = title || (record?.id != null ? `#${record.id}` : '');
+
+    return (
+        <FormDocumentWorkflowBar
+            title={
+                <>
+                    {translate('resources.colorInfo.document', { _: 'Color' })}
+                    {displayTitle ? (
+                        <Box component="span" sx={{ ml: 0.75, fontWeight: 700 }}>
+                            {displayTitle}
+                        </Box>
+                    ) : null}
+                </>
+            }
+            subtitle={translate('resources.colorInfo.subtitle', {
+                _: 'All changes are saved on the server.',
+            })}
+            sx={{ mb: 1, py: '4px' }}
+            navigationActions={
+                <PrevNextButtons resource="colorInformation" sort={{ field: 'id', order: 'DESC' }} />
+            }
+            saveEventName={FORM_SAVE_COLOR_INFORMATION}
+            resource="colorInformation"
+            listPath="/colorInformation"
+            showDelete
+            deleteConfirmMessage="Delete this color?"
+            deleteSuccessMessage="Color deleted successfully"
+        />
+    );
+}
 
 export default function ColorInformationEdit() {
     return (
-        <Edit
-            title="Color Information"
-            mutationMode="pessimistic"
-        >
-            <SimpleForm>
-                <FormSaveBridge eventName={FORM_SAVE_CUSTOMER} />
+        <Edit title="Color Information" mutationMode="pessimistic" actions={false}>
+            <SimpleForm toolbar={false}>
+                <FormSaveBridge eventName={FORM_SAVE_COLOR_INFORMATION} />
+                <ColorEditHeader />
 
-                {/* Sticky Header */}
-                <Paper
-                    variant="outlined"
-                    sx={{
-                        position: { md: 'sticky' },
-                        top: { md: 0 },
-                        zIndex: 5,
-                        p: 2,
-                        mb: 3,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: 2,
-                    }}
-                >
-                    <Box>
-                        <Typography variant="h6" fontWeight={600}>
-                            Color Information
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                            Edit color details • Changes are saved automatically
-                        </Typography>
-                    </Box>
-
-                    <FormHeaderToolbar
-                        saveEventName={FORM_SAVE_CUSTOMER}
-                        resource="colorInformation"
-                        listPath="/colorInformation"
-                        showDelete
-                        deleteConfirmMessage="Delete this color?"
-                        deleteSuccessMessage="Color deleted successfully"
-                    />
-                </Paper>
-
-                {/* Main Form Fields */}
                 <Box sx={{ maxWidth: 700, mx: 'auto', width: '100%' }}>
                     <TextInput
                         source="colorTitle"

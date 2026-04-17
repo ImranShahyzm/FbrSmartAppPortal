@@ -1,5 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
+namespace FbrSmartApp.Api.Models;
 
 [Table("adgen_SaleServiceInfo")]
 public class SaleServiceInfo
@@ -16,7 +19,9 @@ public class SaleServiceInfo
     public int? CompanyID { get; set; }
     public string? Name { get; set; }
 
+    [JsonPropertyName("glcaId")]
     public int? GLCAID { get; set; }
+
     public string? Description { get; set; }
 
     public bool ChargeToCompany { get; set; }
