@@ -14,6 +14,7 @@ import { useTranslate, useGetIdentity } from 'react-admin';
 import { useResolvedActiveAppId } from '../apps/useResolvedActiveAppId';
 import {
     ACCOUNTING_SUITE_APP_ID,
+    AUTO_DEALERS_APP_ID,
     SETTINGS_APP_ID,
 } from '../apps/appsRegistry';
 import { SETTINGS_SECURITY_GROUPS_LIST_PATH, SETTINGS_USERS_LIST_PATH } from '../apps/workspacePaths';
@@ -66,6 +67,10 @@ export function OdooTopNav() {
         return <SettingsShellTopNav workspaceRoot={root} />;
     }
 
+    if (activeAppId === AUTO_DEALERS_APP_ID) {
+        return <AutoDealersShellTopNav workspaceRoot={root} />;
+    }
+
     if (activeAppId !== 'fbr-smart') {
         return (
             <Box sx={{ ...topNavRowSx, display: { xs: 'none', lg: 'flex' } }}>
@@ -79,6 +84,181 @@ export function OdooTopNav() {
     return <FbrSmartTopNav workspaceRoot={root} />;
 }
 
+function AutoDealerSetupDropdown(props: { workspaceRoot: string }) {
+    const translate = useTranslate();
+    const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
+    const open = Boolean(anchor);
+    const root = props.workspaceRoot;
+const bankInfoPath = `/accounting/genBankInformation`;
+    return (
+        <>
+            <Button
+                color="inherit"
+                size="small"
+                onClick={(e) => setAnchor(e.currentTarget)}
+                sx={{ whiteSpace: 'nowrap' }}
+            >
+                {translate('shell.auto_dealers.setup', { _: 'Setup' })}
+            </Button>
+
+            <Menu
+                anchorEl={anchor}
+                open={open}
+                onClose={() => setAnchor(null)}
+                slots={{ transition: Fade }}
+                transitionDuration={180}
+                slotProps={catalogDropdownMenuSlotProps(open)}
+            >
+                {/* Color Info */}
+                <ListSubheader
+                    disableSticky
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: 'primary.main',
+                        lineHeight: 1.3,
+                        py: 0.75,
+                        pl: 1.25,
+                        pr: 2,
+                    }}
+                >
+                    Color Info
+                </ListSubheader>
+                <MenuItem
+                    component={Link}
+                    to={pathInWorkspace(root, '/colorInformation')}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    Color Information
+                </MenuItem>
+
+                {/* Vehicle Info Section */}
+                <ListSubheader
+                    disableSticky
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: 'primary.main',
+                        lineHeight: 1.3,
+                        py: 0.75,
+                        pl: 1.25,
+                        pr: 2,
+                        mt: 1,
+                    }}
+                >
+                    Vehicle Info
+                </ListSubheader>
+
+                <MenuItem
+                    component={Link}
+                    to={pathInWorkspace(root, '/variantInformation')}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    Variant Info
+                </MenuItem>
+
+                <MenuItem
+                    component={Link}
+                    to={pathInWorkspace(root, '/vehicleGroupInfo')}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    Vehicle Group Info
+                </MenuItem>
+
+                {/* Sales Service Info */}
+                <ListSubheader
+                    disableSticky
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: 'primary.main',
+                        lineHeight: 1.3,
+                        py: 0.75,
+                        pl: 1.25,
+                        pr: 2,
+                        mt: 1,
+                    }}
+                >
+                    Sales Service Info
+                </ListSubheader>
+
+                <MenuItem
+                    component={Link}
+                    to={pathInWorkspace(root, '/salesServiceInfo')}
+                    onClick={() => setAnchor(null)}
+                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                >
+                    Sales Service Information
+                </MenuItem>
+
+                {/* Bank Info */}
+                <ListSubheader
+                    disableSticky
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: 13,
+                        color: 'primary.main',
+                        lineHeight: 1.3,
+                        py: 0.75,
+                        pl: 1.25,
+                        pr: 2,
+                        mt: 1,
+                    }}
+                >
+                    Bank Info
+                </ListSubheader>
+
+              <MenuItem
+    component={Link}
+    to={bankInfoPath}
+    onClick={() => setAnchor(null)}
+    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+>
+    {translate('shell.accounting.bank_information')}
+</MenuItem>
+            </Menu>
+        </>
+    );
+}
+function AutoDealersShellTopNav(props: { workspaceRoot: string }) {
+    const translate = useTranslate();
+    const root = props.workspaceRoot;
+
+    const salesPath = pathInWorkspace(root, '/sales');
+    const reportsPath = pathInWorkspace(root, '/autoDealerReports');   // ← Fixed to match your Resource
+
+    const canSales = useCanAccess(AUTO_DEALERS_APP_ID, 'sales', 'read');
+    const canSetup = useCanAccess(AUTO_DEALERS_APP_ID, 'setup', 'read');
+    const canReports = useCanAccess(AUTO_DEALERS_APP_ID, 'reports', 'read');
+
+    return (
+        <Box sx={{ ...topNavRowSx, display: { xs: 'none', lg: 'flex' } }}>
+            <Button color="inherit" component={Link} to={root} size="small">
+                {translate('ra.page.dashboard', { _: 'Dashboard' })}
+            </Button>
+
+            {/* Sales Tab */}
+            {canSales && (
+                <Button color="inherit" component={Link} to={salesPath} size="small">
+                    {translate('shell.auto_dealers.sales', { _: 'Sales' })}
+                </Button>
+            )}
+
+            {/* Setup Tab with Dropdown */}
+            {canSetup && <AutoDealerSetupDropdown workspaceRoot={root} />}
+
+            {/* Reports Tab */}
+            {canReports && (
+                <Button color="inherit" component={Link} to={reportsPath} size="small">
+                    {translate('shell.auto_dealers.reports', { _: 'Reports' })}
+                </Button>
+            )}
+        </Box>
+    );
+}
 function FbrSmartTopNav(props: { workspaceRoot: string }) {
     const translate = useTranslate();
     const { workspaceRoot: root } = props;

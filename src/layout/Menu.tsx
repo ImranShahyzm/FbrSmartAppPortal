@@ -14,6 +14,8 @@ import clsx from 'clsx';
 import visitors from '../visitors';
 import fbrInvoices from '../orders';
 import SubMenu from './SubMenu';
+
+// ICONS
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import BusinessIcon from '@mui/icons-material/Business';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -21,20 +23,29 @@ import PercentIcon from '@mui/icons-material/Percent';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SecurityIcon from '@mui/icons-material/Security';
+import ColorLensIcon from '@mui/icons-material/ColorLens'; // For Color Info
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar'; // For Vehicle Info
+import BuildIcon from '@mui/icons-material/Build'; // For Variant Info
+import CategoryIcon from '@mui/icons-material/Category'; // For Vehicle Groups
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest'; // For Setup
+import AssessmentIcon from '@mui/icons-material/Assessment'; // For Reports
 
 import { useCanAccess } from '../auth/useCanAccess';
 import { useResolvedActiveAppId } from '../apps/useResolvedActiveAppId';
 import {
     ACCOUNTING_SUITE_APP_ID,
     SETTINGS_APP_ID,
+    AUTO_DEALERS_APP_ID, // Ensure this is exported from your registry
 } from '../apps/appsRegistry';
 import { SETTINGS_SECURITY_GROUPS_LIST_PATH, SETTINGS_USERS_LIST_PATH } from '../apps/workspacePaths';
 
-type MenuName = 'menuCatalog';
+// Added menuSetup to the types
+type MenuName = 'menuCatalog' | 'menuSetup';
 
 const Menu = ({ dense = false }: MenuProps) => {
     const [state, setState] = useState({
         menuCatalog: true,
+        menuSetup: true, // State to handle the Setup dropdown
     });
     const translate = useTranslate();
     const [open] = useSidebarState();
@@ -68,39 +79,85 @@ const Menu = ({ dense = false }: MenuProps) => {
             })}
         >
             <DashboardMenuItem />
+
             {!companyActive ? null : activeAppId === SETTINGS_APP_ID ? (
+                // SETTINGS APP MENU
                 <>
-                    {canUsers ? (
+                    {canUsers && (
                         <MenuItemLink
                             to={SETTINGS_USERS_LIST_PATH}
-                            state={{ _scrollToTop: true }}
-                            primaryText={translate(`resources.users.name`, {
-                                smart_count: 2,
-                                _: 'Users',
-                            })}
+                            primaryText="Users"
                             leftIcon={<PersonOutlineIcon />}
                             dense={dense}
                         />
-                    ) : null}
-                    {canSecurityGroups ? (
+                    )}
+                    {canSecurityGroups && (
                         <MenuItemLink
                             to={SETTINGS_SECURITY_GROUPS_LIST_PATH}
-                            state={{ _scrollToTop: true }}
-                            primaryText={translate('shell.settings.security_groups', { _: 'Security groups' })}
+                            primaryText="Security Groups"
                             leftIcon={<SecurityIcon />}
                             dense={dense}
                         />
-                    ) : null}
+                    )}
                 </>
             ) : activeAppId === ACCOUNTING_SUITE_APP_ID ? (
+                // ACCOUNTING APP MENU
                 <MenuItemLink
                     to="/glChartAccounts"
-                    state={{ _scrollToTop: true }}
-                    primaryText={translate('shell.accounting.chart_of_accounts')}
+                    primaryText="Chart of Accounts"
                     leftIcon={<AccountBalanceIcon />}
                     dense={dense}
                 />
+            ) : activeAppId === AUTO_DEALERS_APP_ID ? (
+                 <>
+                    {/* Setup SubMenu */}
+                    <SubMenu
+                        handleToggle={() => handleToggle('menuSetup')}
+                        isOpen={state.menuSetup}
+                        name="Setup"
+                        icon={<SettingsSuggestIcon />}
+                        dense={dense}
+                    >
+                        <MenuItemLink
+                            to="/auto-dealers/colorInformation"
+                            primaryText="Color Info"
+                            leftIcon={<ColorLensIcon />}
+                        />
+                        <MenuItemLink
+                            to="/auto-dealers/vehicleInformation"
+                            primaryText="Vehicle Info"
+                            leftIcon={<DirectionsCarIcon />}
+                        />
+                        <MenuItemLink
+                            to="/auto-dealers/variantInformation"
+                            primaryText="Variant Info"
+                            leftIcon={<BuildIcon />}
+                        />
+                        <MenuItemLink
+                            to="/auto-dealers/vehicleGroups"
+                            primaryText="Vehicle Group"
+                            leftIcon={<CategoryIcon />}
+                        />
+                        <MenuItemLink
+                            to="/auto-dealers/salesServicesInformation"
+                            primaryText="Sales Service Info"
+                            leftIcon={<BusinessIcon />}
+                        />
+                        <MenuItemLink
+                            to="/auto-dealers/bankInformation"
+                            primaryText="Bank Info"
+                            leftIcon={<AccountBalanceIcon />}
+                        />
+                    </SubMenu>
+
+                    <MenuItemLink
+                        to="/auto-dealers/autoDealerReports"
+                        primaryText="Reports"
+                        leftIcon={<AssessmentIcon />}
+                    />
+                </>
             ) : (
+                // FBR SMART / DEFAULT APP MENU
                 <>
             <MenuItemLink
                 to="/fbrInvoices"

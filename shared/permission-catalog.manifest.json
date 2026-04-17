@@ -47,8 +47,8 @@
       "permissionsPrefix": "auto-dealers",
       "displayName": "Auto Dealers",
       "resources": [
-        { "key": "securityGroups", "label": "Security groups" },
-        { "key": "users", "label": "Users" }
+        { "key": "sales", "label": "Sales" },
+        { "key": "Setup", "label": "Users" }
       ]
     }
   ]
