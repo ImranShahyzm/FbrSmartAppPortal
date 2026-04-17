@@ -1,18 +1,40 @@
-# See https://help.github.com/ignore-files/ for more about ignoring files.
+# ========================
+# .NET / ASP.NET Core
+# ========================
+**/bin/
+**/obj/
 
-# dependencies
-/node_modules
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
 
-# testing
-/coverage
+# Build results
+*.dll
+*.exe
+*.pdb
 
-# production
-/build
-/iis-publish/
+# Visual Studio
+.vs/
+
+# Rider
+.idea/
+
+# Logs
+*.log
+
+# ========================
+# Existing (React)
+# ========================
+node_modules/
+coverage/
+build/
+iis-publish/
+
 backend/FbrSmartApp.Api/wwwroot/**
 !backend/FbrSmartApp.Api/wwwroot/.gitkeep
 
-# misc
 .DS_Store
 .env.local
 .env.development.local
