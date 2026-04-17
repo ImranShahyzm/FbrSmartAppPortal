@@ -152,15 +152,6 @@ const bankInfoPath = `/accounting/genBankInformation`;
 
                 <MenuItem
                     component={Link}
-                    to={pathInWorkspace(root, '/vehicleInformation')}
-                    onClick={() => setAnchor(null)}
-                    sx={{ pl: 3.5, py: 1, fontSize: 13 }}
-                >
-                    Vehicle Information
-                </MenuItem>
-
-                <MenuItem
-                    component={Link}
                     to={pathInWorkspace(root, '/variantInformation')}
                     onClick={() => setAnchor(null)}
                     sx={{ pl: 3.5, py: 1, fontSize: 13 }}
@@ -170,11 +161,11 @@ const bankInfoPath = `/accounting/genBankInformation`;
 
                 <MenuItem
                     component={Link}
-                    to={pathInWorkspace(root, '/vehicleGroups')}
+                    to={pathInWorkspace(root, '/vehicleGroupInfo')}
                     onClick={() => setAnchor(null)}
                     sx={{ pl: 3.5, py: 1, fontSize: 13 }}
                 >
-                    Vehicle Group
+                    Vehicle Group Info
                 </MenuItem>
 
                 {/* Sales Service Info */}

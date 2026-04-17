@@ -4,25 +4,33 @@ const apiUrl = 'http://localhost:5227/api';
 const httpClient = fetchUtils.fetchJson;
 
 export const autoDealerDataProvider: DataProvider = {
-    getList: async (resource, params) => {
-        const { page, perPage } = params.pagination ?? { page: 1, perPage: 10 };
-        const skip = (page - 1) * perPage;
-        const take = perPage;
+  getList: async (resource, params) => {
+    const { page, perPage } = params.pagination ?? { page: 1, perPage: 10 };
+    const skip = (page - 1) * perPage;
+    const take = perPage;
 
-        const url = `${apiUrl}/${resource}?range=[${skip},${skip + take - 1}]`;
+    let url = `${apiUrl}/${resource}?range=[${skip},${skip + take - 1}]`;
 
-        const { headers, json } = await httpClient(url);
-        const contentRange = headers.get('Content-Range') ?? '';
-        const total = parseInt(contentRange.split('/').pop() ?? '0', 10) || json.length || 0;
+    // ✅ VehicleInfo filtering by group
+    if (resource === 'VehicleInfo' && params.filter?.VehicleGroupID) {
+        url = `${apiUrl}/VehicleInfo/by-group/${params.filter.VehicleGroupID}`;
+    }
 
-        return {
-            data: json.map((item: any) => ({
-                ...item,
-                id: item[getPrimaryKey(resource)] ?? item.id,
-            })),
-            total,
-        };
-    },
+    const { headers, json } = await httpClient(url);
+
+    const total =
+        headers.get('Content-Range')
+            ? parseInt(headers.get('Content-Range')!.split('/').pop() || '0', 10)
+            : json.length;
+
+    return {
+        data: json.map((item: any) => ({
+            ...item,
+            id: item[getPrimaryKey(resource)] ?? item.id,
+        })),
+        total,
+    };
+},
 
     getOne: async (resource, params) => {
         const { json } = await httpClient(`${apiUrl}/${resource}/${params.id}`);
@@ -115,12 +123,12 @@ export const autoDealerDataProvider: DataProvider = {
 function getPrimaryKey(resource: string): string {
     const map: Record<string, string> = {
         colorInformation: 'colorID',
-        VehicleInfo: 'vehicleID',
         BankInformation: 'bankInfoID',
         VariantInfo: 'varientID',
-        
-        // ✅ Added for Sales Service Info
-        salesServiceInfo: 'saleServiceInfoID',           // Main mapping (recommended)
+        VehicleGroup: 'vehicleGroupID',
+        VehicleInfo: 'vehicleID',
+
+        salesServiceInfo: 'saleServiceInfoID',  
         SaleServiceInfo: 'saleServiceInfoID',
         'sales-service-info': 'saleServiceInfoID',
         

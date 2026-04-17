@@ -13,6 +13,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<ProductProfile> ProductProfiles => Set<ProductProfile>();
     public DbSet<ColorInfo> ColorInfos => Set<ColorInfo>();
     public DbSet<SaleServiceInfo> SaleServiceInfos => Set<SaleServiceInfo>();
+    public DbSet<VehicleGroup> VehicleGroups => Set<VehicleGroup>();
+    public DbSet<VehicleInfo> VehicleInfos => Set<VehicleInfo>();
     public DbSet<ProductProfileChatterMessage> ProductProfileChatterMessages =>
         Set<ProductProfileChatterMessage>();
     public DbSet<FbrSaleType> FbrSaleTypes => Set<FbrSaleType>();

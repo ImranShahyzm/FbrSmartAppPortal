@@ -48,8 +48,8 @@ internal static class PermissionCatalogGenerated
             "auto-dealers",
             "Auto Dealers",
             [
-                new PermissionCatalog.ResourceEntry("securityGroups", "Security groups"),
-                new PermissionCatalog.ResourceEntry("users", "Users"),
+                new PermissionCatalog.ResourceEntry("sales", "Sales"),
+                new PermissionCatalog.ResourceEntry("Setup", "Users"),
             ]),
     ];
 }

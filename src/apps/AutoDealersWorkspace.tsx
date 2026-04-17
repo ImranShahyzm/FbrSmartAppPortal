@@ -16,6 +16,9 @@ import ColorInformationList from '../autodealer/colorInfo/ColorInfoList';
 import SalesServiceInformationEdit from '../autodealer/SalesServiceInfo/SalesServiceInfoEdit';
 import SalesServiceInformationList from '../autodealer/SalesServiceInfo/SalesServiceInfoList';
 import SalesServiceInformationCreate from '../autodealer/SalesServiceInfo/SalesServiceInfoCreate';
+import VehicleGroupInformationList from '../autodealer/Vehicle/VehicleGroupInfoList';
+import VehicleGroupInformationCreate from '../autodealer/Vehicle/VehicleGroupInfoCreate';
+import VehicleGroupInformationEdit from '../autodealer/Vehicle/VehicleGroupInfoEdit';
 
 // Placeholder for missing components so links don't break
 const P = (name: string) => () => <div style={{ padding: '20px' }}>{name} Component</div>;
@@ -66,9 +69,14 @@ export function AutoDealersWorkspace(props: WorkspaceComponentProps) {
     create={SalesServiceInformationCreate}       
     edit={SalesServiceInformationEdit}    
 />
-                <Resource name="vehicleInformation" list={P('Vehicle Info')} />
+<Resource
+    name="vehicleGroupInfo"                    // ← Changed to PascalCase
+    list={VehicleGroupInformationList}
+    create={VehicleGroupInformationCreate}       
+    edit={VehicleGroupInformationEdit}    
+/>
+                <Resource name="vehicleGroupInfo" list={P('Vehicle Group Info')} />
                 <Resource name="variantInformation" list={P('Variant Info')} />
-                <Resource name="vehicleGroups" list={P('Vehicle Groups')} />
                 <Resource name="bankInformation" list={P('Bank Info')} />
                 <Resource name="autoDealerReports" list={P('Reports')} />
             </>
