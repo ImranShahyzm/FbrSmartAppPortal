@@ -16,21 +16,26 @@ namespace FbrSmartApp.Api.Controllers;
 [Authorize]
 public sealed class FbrInvoicesController : ControllerBase
 {
+    private const string ResourceKey = "fbrInvoices";
+
     private readonly AppDbContext _db;
     private readonly IFbrDigitalInvoicingClient _fbrClient;
     private readonly IFbrInvoiceExcelImportService _excelImport;
     private readonly RecordRulesService _recordRules;
+    private readonly AppRecordMessageService _recordMessages;
 
     public FbrInvoicesController(
         AppDbContext db,
         IFbrDigitalInvoicingClient fbrClient,
         IFbrInvoiceExcelImportService excelImport,
-        RecordRulesService recordRules)
+        RecordRulesService recordRules,
+        AppRecordMessageService recordMessages)
     {
         _db = db;
         _fbrClient = fbrClient;
         _excelImport = excelImport;
         _recordRules = recordRules;
+        _recordMessages = recordMessages;
     }
 
     [HttpGet]
@@ -92,7 +97,7 @@ public sealed class FbrInvoicesController : ControllerBase
             }
         }
 
-        query = query.OrderByDescending(x => x.InvoiceDateUtc);
+        query = query.OrderByDescending(x => x.InvoiceDate);
 
         var total = await query.CountAsync(ct);
 
@@ -142,7 +147,7 @@ public sealed class FbrInvoicesController : ControllerBase
                     CustomerAddress = TrimOrNull(cust?.AddressOne),
                     CustomerNtn = ListDisplayCustomerNtn(cust),
                     CustomerPhone = ListDisplayCustomerPhone(cust),
-                    InvoiceDate = x.InvoiceDateUtc,
+                    InvoiceDate = x.InvoiceDate.ToString("yyyy-MM-dd"),
                     PaymentTerms = x.PaymentTerms,
                     Status = x.Status,
                     Total = x.Total,
@@ -446,6 +451,19 @@ public sealed class FbrInvoicesController : ControllerBase
         var (dto, err) = await TryCreateInvoiceAsync(companyId, actingUser, displayName, req, ct);
         if (err is not null)
             return BadRequest(new { message = err });
+
+        if (dto is not null)
+        {
+            await _recordMessages.AddSystemAsync(
+                companyId,
+                ResourceKey,
+                dto.Id.ToString(),
+                systemAction: "Created",
+                authorUserId: actingUser.Id,
+                authorDisplayName: actingUser.FullName,
+                ct: ct,
+                detailBody: $"Invoice created ({dto.InvoiceNumber})");
+        }
         return Ok(dto);
     }
 
@@ -499,6 +517,7 @@ public sealed class FbrInvoicesController : ControllerBase
             Reference = reference,
             InvoiceNumber = invoiceNumber,
             CustomerPartyId = req.CustomerPartyId,
+            InvoiceDate = ResolveInvoiceDateOnlyOrDefault(req.InvoiceDate, req.InvoiceDateUtc),
             InvoiceDateUtc = req.InvoiceDateUtc ?? DateTime.UtcNow,
             PaymentTerms = string.IsNullOrWhiteSpace(req.PaymentTerms) ? "immediate" : req.PaymentTerms!,
             Status = SanitizeNewInvoiceStatus(req.Status),
@@ -565,7 +584,32 @@ public sealed class FbrInvoicesController : ControllerBase
             var existing = await cmd.ExecuteScalarAsync(ct);
             if (existing == null || existing == DBNull.Value)
             {
-                // first invoice for this company
+                // First invoice for this company (or sequence row missing).
+                // Seed from the current max INV##### in FbrInvoices to avoid duplicate numbers on existing DBs.
+                var startAt = 1;
+                await using (var maxCmd = conn.CreateCommand())
+                {
+                    maxCmd.Transaction = tx;
+                    maxCmd.CommandText =
+                        """
+                        SELECT MAX(TRY_CONVERT(INT, SUBSTRING(InvoiceNumber, 4, 20)))
+                        FROM dbo.FbrInvoices WITH (HOLDLOCK)
+                        WHERE CompanyId = @CompanyId
+                          AND InvoiceNumber IS NOT NULL
+                          AND LEFT(InvoiceNumber, 3) = 'INV'
+                        """;
+                    var mp = maxCmd.CreateParameter();
+                    mp.ParameterName = "@CompanyId";
+                    mp.Value = companyId;
+                    maxCmd.Parameters.Add(mp);
+                    var maxObj = await maxCmd.ExecuteScalarAsync(ct);
+                    if (maxObj != null && maxObj != DBNull.Value)
+                    {
+                        var max = Convert.ToInt32(maxObj);
+                        if (max >= 1) startAt = max + 1;
+                    }
+                }
+
                 await using var ins = conn.CreateCommand();
                 ins.Transaction = tx;
                 ins.CommandText =
@@ -578,13 +622,13 @@ public sealed class FbrInvoicesController : ControllerBase
                 p1.Value = companyId;
                 var p2 = ins.CreateParameter();
                 p2.ParameterName = "@NextValue";
-                p2.Value = 2; // store next after returning 1
+                p2.Value = startAt + 1; // store next after returning startAt
                 ins.Parameters.Add(p1);
                 ins.Parameters.Add(p2);
                 await ins.ExecuteNonQueryAsync(ct);
 
                 await tx.CommitAsync(ct);
-                return 1;
+                return startAt;
             }
 
             var current = Convert.ToInt32(existing);
@@ -633,6 +677,7 @@ public sealed class FbrInvoicesController : ControllerBase
             .Where(x => x.Id == id && x.CompanyId == companyId)
             .Select(x => x.InvoiceDateUtc)
             .FirstAsync(ct);
+        var invoiceDateOnly = ResolveInvoiceDateOnlyOrDefault(req.InvoiceDate, invoiceDateUtc);
 
         var hasProductLines = (req.Lines ?? []).Any(l => l.ProductProfileId != Guid.Empty);
         if (hasProductLines && (req.FbrScenarioId is null or <= 0))
@@ -676,6 +721,7 @@ public sealed class FbrInvoicesController : ControllerBase
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(x => x.CustomerPartyId, req.CustomerPartyId)
+                    .SetProperty(x => x.InvoiceDate, invoiceDateOnly)
                     .SetProperty(x => x.InvoiceDateUtc, e => req.InvoiceDateUtc ?? e.InvoiceDateUtc)
                     .SetProperty(x => x.PaymentTerms, e => string.IsNullOrWhiteSpace(req.PaymentTerms) ? e.PaymentTerms : req.PaymentTerms!)
                     .SetProperty(x => x.Status, nextStatus)
@@ -702,7 +748,19 @@ public sealed class FbrInvoicesController : ControllerBase
             .Include(x => x.Lines)
             .Include(x => x.ChatterMessages)
             .FirstAsync(x => x.Id == id, ct);
-        return Ok(await MapDetailAsync(reloaded, companyId, ct));
+        var dto = await MapDetailAsync(reloaded, companyId, ct);
+
+        await _recordMessages.AddSystemAsync(
+            companyId,
+            ResourceKey,
+            id.ToString(),
+            systemAction: "Updated",
+            authorUserId: actingUser.Id,
+            authorDisplayName: actingUser.FullName,
+            ct: ct,
+            detailBody: $"Invoice updated ({dto.InvoiceNumber})");
+
+        return Ok(dto);
     }
 
     private static (decimal TotalEx, decimal Taxes, decimal Total, decimal TaxRate) ComputeTotals(
@@ -717,7 +775,9 @@ public sealed class FbrInvoicesController : ControllerBase
             var disc = line.DiscountRate < 0 ? 0 : (line.DiscountRate > 100 ? 100 : line.DiscountRate);
             var net = grossLine * (1 - (disc / 100m));
             ex += net;
-            tx += net * line.TaxRate;
+            var mrpGross = line.FixedNotifiedApplicable ? (line.Quantity * line.MrpRateValue) : 0m;
+            var taxBase = line.FixedNotifiedApplicable && line.MrpRateValue > 0 ? mrpGross : net;
+            tx += taxBase * line.TaxRate;
         }
         var total = ex + tx + deliveryFees;
         var taxRate = ex > 0 ? tx / ex : 0;
@@ -743,6 +803,8 @@ public sealed class FbrInvoicesController : ControllerBase
                 x.SroItemId,
                 x.SroScheduleNoText,
                 x.SroItemRefText,
+                x.FixedNotifiedApplicable,
+                x.MrpRateValue,
             })
             .ToDictionaryAsync(x => x.Id, ct);
 
@@ -837,6 +899,8 @@ public sealed class FbrInvoicesController : ControllerBase
                 FbrSalesTaxRateId = primaryId,
                 FbrSalesTaxRateIdsJson = idsJson,
                 DiscountRate = lr.DiscountRate,
+                FixedNotifiedApplicable = lr.FixedNotifiedApplicable,
+                MrpRateValue = lr.FixedNotifiedApplicable ? lr.MrpRateValue : 0m,
                 HsCode = hsCode ?? "",
                 SroItemText = sroText ?? "",
                 Remarks = lr.Remarks ?? "",
@@ -864,6 +928,16 @@ public sealed class FbrInvoicesController : ControllerBase
 
         _db.FbrInvoices.Remove(entity);
         await _db.SaveChangesAsync(ct);
+
+        await _recordMessages.AddSystemAsync(
+            companyId,
+            ResourceKey,
+            id.ToString(),
+            systemAction: "Deleted",
+            authorUserId: actingUser.Id,
+            authorDisplayName: actingUser.FullName,
+            ct: ct,
+            detailBody: $"Invoice deleted ({entity.InvoiceNumber ?? "—"})");
         return Ok(new { id });
     }
 
@@ -935,7 +1009,19 @@ public sealed class FbrInvoicesController : ControllerBase
             .Include(x => x.Lines)
             .Include(x => x.ChatterMessages)
             .FirstAsync(x => x.Id == id, ct);
-        return Ok(await MapDetailAsync(reloaded, companyId, ct));
+        var dto = await MapDetailAsync(reloaded, companyId, ct);
+
+        await _recordMessages.AddSystemAsync(
+            companyId,
+            ResourceKey,
+            id.ToString(),
+            systemAction: "Validated",
+            authorUserId: actingUser.Id,
+            authorDisplayName: actingUser.FullName,
+            ct: ct,
+            detailBody: $"Invoice validated with FBR ({dto.InvoiceNumber})");
+
+        return Ok(dto);
     }
 
     [HttpPost("{id:guid}/post")]
@@ -1010,7 +1096,19 @@ public sealed class FbrInvoicesController : ControllerBase
             .Include(x => x.Lines)
             .Include(x => x.ChatterMessages)
             .FirstAsync(x => x.Id == id, ct);
-        return Ok(await MapDetailAsync(reloaded, companyId, ct));
+        var dto = await MapDetailAsync(reloaded, companyId, ct);
+
+        await _recordMessages.AddSystemAsync(
+            companyId,
+            ResourceKey,
+            id.ToString(),
+            systemAction: "Posted",
+            authorUserId: actingUser.Id,
+            authorDisplayName: actingUser.FullName,
+            ct: ct,
+            detailBody: $"Invoice posted to FBR ({dto.InvoiceNumber})");
+
+        return Ok(dto);
     }
 
     /// <summary>Append chatter message + optional file payloads (base64).</summary>
@@ -1087,7 +1185,9 @@ public sealed class FbrInvoicesController : ControllerBase
             var disc = line.DiscountRate < 0 ? 0 : (line.DiscountRate > 100 ? 100 : line.DiscountRate);
             var net = grossLine * (1 - (disc / 100m));
             ex += net;
-            tx += net * line.TaxRate;
+            var mrpGross = line.FixedNotifiedApplicable ? (line.Quantity * line.MrpRateValue) : 0m;
+            var taxBase = line.FixedNotifiedApplicable && line.MrpRateValue > 0 ? mrpGross : net;
+            tx += taxBase * line.TaxRate;
         }
 
         invoice.TotalExTaxes = ex;
@@ -1134,6 +1234,8 @@ public sealed class FbrInvoicesController : ControllerBase
                 FbrSalesTaxRateId = line.FbrSalesTaxRateId,
                 FbrSalesTaxRateIds = taxIdList.Count > 0 ? taxIdList.ToList() : null,
                 DiscountRate = line.DiscountRate,
+                FixedNotifiedApplicable = line.FixedNotifiedApplicable,
+                MrpRateValue = line.MrpRateValue,
                 HsCode = prof?.HsCode ?? line.HsCode,
                 SroItemText = await LiveSroTextAsync(prof, line.SroItemText, ct),
                 SroScheduleNoText = prof?.SroScheduleNoText ?? "",
@@ -1158,7 +1260,7 @@ public sealed class FbrInvoicesController : ControllerBase
             CreatedByDisplayName = inv.CreatedByDisplayName,
             UpdatedByDisplayName = inv.UpdatedByDisplayName,
             CustomerPartyId = inv.CustomerPartyId,
-            InvoiceDate = inv.InvoiceDateUtc,
+            InvoiceDate = inv.InvoiceDate.ToString("yyyy-MM-dd"),
             PaymentTerms = inv.PaymentTerms,
             Status = inv.Status,
             FbrInvoiceNumber = inv.FbrInvoiceNumber,
@@ -1457,6 +1559,11 @@ public sealed class FbrInvoicesController : ControllerBase
     {
         public string? Reference { get; set; }
         public int CustomerPartyId { get; set; }
+        /// <summary>
+        /// Business invoice date (date-only). Preferred over <see cref="InvoiceDateUtc"/> for all new clients.
+        /// Format: yyyy-MM-dd
+        /// </summary>
+        public string? InvoiceDate { get; set; }
         public DateTime? InvoiceDateUtc { get; set; }
         public string? PaymentTerms { get; set; }
         public string? Status { get; set; }
@@ -1480,6 +1587,10 @@ public sealed class FbrInvoicesController : ControllerBase
         /// <summary>When set (1+ ids), replaces <see cref="FbrSalesTaxRateId"/> for persistence; percentages are summed.</summary>
         public List<int>? FbrSalesTaxRateIds { get; set; }
         public decimal DiscountRate { get; set; }
+        /// <summary>Invoice override: when true, tax base is MRP (Fixed notified); when false, use sale net.</summary>
+        public bool FixedNotifiedApplicable { get; set; }
+        /// <summary>Invoice override: MRP value used when <see cref="FixedNotifiedApplicable"/> is true (0 clears).</summary>
+        public decimal MrpRateValue { get; set; }
         public string? Remarks { get; set; }
     }
 
@@ -1508,7 +1619,7 @@ public sealed class FbrInvoicesController : ControllerBase
         public string? CustomerAddress { get; set; }
         public string? CustomerNtn { get; set; }
         public string? CustomerPhone { get; set; }
-        public DateTime InvoiceDate { get; set; }
+        public string InvoiceDate { get; set; } = "";
         public string PaymentTerms { get; set; } = "";
         public string Status { get; set; } = "";
         public bool Returned { get; set; }
@@ -1533,7 +1644,7 @@ public sealed class FbrInvoicesController : ControllerBase
         public string? CreatedByDisplayName { get; set; }
         public string? UpdatedByDisplayName { get; set; }
         public int CustomerPartyId { get; set; }
-        public DateTime InvoiceDate { get; set; }
+        public string InvoiceDate { get; set; } = "";
         public string PaymentTerms { get; set; } = "";
         public string Status { get; set; } = "";
         public string? FbrInvoiceNumber { get; set; }
@@ -1553,6 +1664,14 @@ public sealed class FbrInvoicesController : ControllerBase
         public List<ChatterMessageDto> ChatterMessages { get; set; } = new();
     }
 
+    private static DateOnly ResolveInvoiceDateOnlyOrDefault(string? dateOnly, DateTime? fallbackUtc)
+    {
+        if (!string.IsNullOrWhiteSpace(dateOnly) && DateOnly.TryParse(dateOnly.Trim(), out var parsed))
+            return parsed;
+        var dt = fallbackUtc ?? DateTime.UtcNow;
+        return DateOnly.FromDateTime(dt);
+    }
+
     public sealed class FbrInvoiceLineDto
     {
         public Guid Id { get; set; }
@@ -1565,6 +1684,8 @@ public sealed class FbrInvoicesController : ControllerBase
         public int? FbrSalesTaxRateId { get; set; }
         public List<int>? FbrSalesTaxRateIds { get; set; }
         public decimal DiscountRate { get; set; }
+        public bool FixedNotifiedApplicable { get; set; }
+        public decimal MrpRateValue { get; set; }
         public string HsCode { get; set; } = "";
         /// <summary>Legacy snapshot; invoice UI uses <see cref="SroScheduleNoText"/> / <see cref="SroItemRefText"/> from product profile.</summary>
         public string SroItemText { get; set; } = "";

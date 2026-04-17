@@ -4,6 +4,11 @@ public sealed class ProductProfile
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
+    /// <summary>
+    /// Legacy ERP key. Generated in DB via sequence-backed default (not the PK in this app).
+    /// </summary>
+    public int ItemId { get; set; }
+
     public int CompanyId { get; set; }
 
     public string ProductNo { get; set; } = "";
@@ -25,6 +30,14 @@ public sealed class ProductProfile
 
     /// <summary>Optional free-text SRO item reference (e.g. 45(i)); used for FBR payload when set.</summary>
     public string? SroItemRefText { get; set; }
+
+    /// <summary>
+    /// When true, FBR fixed notified value / retail price is applicable and sales tax should be computed on MRP.
+    /// </summary>
+    public bool FixedNotifiedApplicable { get; set; }
+
+    /// <summary>MRP (fixed notified value / retail price) used for FBR tax base when <see cref="FixedNotifiedApplicable"/> is true.</summary>
+    public decimal? MrpRateValue { get; set; }
 
     /// <summary>FBR PDI UOM id (uoM_ID) for digital invoice line UoM.</summary>
     public int? FbrUomId { get; set; }

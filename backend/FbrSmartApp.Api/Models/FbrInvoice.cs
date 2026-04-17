@@ -18,6 +18,12 @@ public sealed class FbrInvoice
 
     public int CustomerPartyId { get; set; }
 
+    /// <summary>
+    /// Invoice date (date-only, no timezone). Stored as SQL <c>DATE</c>.
+    /// This is the business invoice date selected by the user and used for FBR payloads.
+    /// </summary>
+    public DateOnly InvoiceDate { get; set; }
+
     public DateTime InvoiceDateUtc { get; set; }
 
     public string PaymentTerms { get; set; } = "immediate";

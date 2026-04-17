@@ -436,7 +436,7 @@ function VoucherTypeListToolbar() {
                 p: 0,
                 minHeight: 'unset',
                 flexDirection: 'column',
-                pt: { xs: '4px', md: '12px' },
+                pt: 0,
             }}
         >
             <Box

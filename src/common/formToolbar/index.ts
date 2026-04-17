@@ -15,6 +15,7 @@ export {
     FORM_SAVE_GL_JOURNAL_VOUCHER,
     FORM_SAVE_GEN_BANK_INFORMATION,
     FORM_SAVE_GEN_CASH_INFORMATION,
+    FORM_SAVE_GL_ACCOUNT_GROUP,
 } from './formSaveEvents';
 export { FormDocumentWorkflowBar } from './FormDocumentWorkflowBar';
 export type { FormDocumentWorkflowBarProps } from './FormDocumentWorkflowBar';

@@ -13,6 +13,10 @@ export type FbrInvoiceLineForm = {
     fbrSalesTaxRateIds?: number[];
     /** Discount percent (0-100) */
     discountRate?: number;
+    /** Fixed notified / MRP-based tax flag (may be overridden per invoice line) */
+    fixedNotifiedApplicable?: boolean;
+    /** MRP rate value used as tax base when fixed notified applies */
+    mrpRateValue?: number;
     hsCode?: string;
     /** Legacy DB snapshot; not shown in invoice line grid */
     sroItemText?: string;
@@ -23,6 +27,24 @@ export type FbrInvoiceLineForm = {
     fbrSaleTypeText?: string;
     remarks?: string;
 };
+
+function toDateOnlyLocal(value: unknown): string | undefined {
+    if (value == null || value === '') return undefined;
+    if (typeof value === 'string') {
+        // Accept already-normalized yyyy-MM-dd (preferred)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value.trim();
+        // If server ever returns an ISO-ish string, keep date portion only
+        if (value.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+        return undefined;
+    }
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const y = value.getFullYear();
+        const m = String(value.getMonth() + 1).padStart(2, '0');
+        const d = String(value.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    return undefined;
+}
 
 function toIsoUtc(value: unknown): string | undefined {
     if (value == null || value === '') return undefined;
@@ -70,6 +92,8 @@ export function normalizeFbrInvoiceRecord(data: Record<string, unknown> | null |
                     : Number((l as any).fbrSalesTaxRateId),
             fbrSalesTaxRateIds,
             discountRate: Number((l as any).discountRate) || 0,
+            fixedNotifiedApplicable: Boolean((l as any).fixedNotifiedApplicable),
+            mrpRateValue: Number((l as any).mrpRateValue) || 0,
             hsCode: l.hsCode ?? '',
             sroItemText: l.sroItemText ?? '',
             sroScheduleNoText: String((l as any).sroScheduleNoText ?? ''),
@@ -118,6 +142,9 @@ export function mapFbrInvoiceToUpsertBody(data: Record<string, unknown>) {
                     fromArr.length > 0 ? fromArr[0] : l.fbrSalesTaxRateId == null ? null : Number(l.fbrSalesTaxRateId),
                 fbrSalesTaxRateIds: fromArr.length > 0 ? fromArr : undefined,
                 discountRate: Number((l as any).discountRate) || 0,
+                // Always send explicit FN/MRP so invoice overrides persist (false must not fall back to product profile).
+                fixedNotifiedApplicable: Boolean((l as any).fixedNotifiedApplicable),
+                mrpRateValue: Number((l as any).mrpRateValue) || 0,
                 remarks: String(l.remarks ?? ''),
             };
         });
@@ -127,7 +154,8 @@ export function mapFbrInvoiceToUpsertBody(data: Record<string, unknown>) {
     return {
         reference: data.reference as string | undefined,
         customerPartyId: Number(data.customerPartyId) || 0,
-        invoiceDateUtc: toIsoUtc(data.invoiceDate),
+        // Date-only to avoid UTC shifting; backend persists DATE and uses it for FBR payload.
+        invoiceDate: toDateOnlyLocal((data as any).invoiceDate),
         paymentTerms: (data.paymentTerms as string) ?? 'immediate',
         status: (data.status as string) ?? 'ordered',
         returned: false,

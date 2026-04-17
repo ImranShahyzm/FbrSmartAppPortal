@@ -145,6 +145,8 @@ public sealed class ProductProfilesController : ControllerBase
             FbrProductType = string.IsNullOrWhiteSpace(req.FbrProductType) ? null : req.FbrProductType.Trim(),
             SroScheduleNoText = string.IsNullOrWhiteSpace(req.SroScheduleNoText) ? null : req.SroScheduleNoText.Trim(),
             SroItemRefText = string.IsNullOrWhiteSpace(req.SroItemRefText) ? null : req.SroItemRefText.Trim(),
+            FixedNotifiedApplicable = req.FixedNotifiedApplicable,
+            MrpRateValue = req.MrpRateValue,
             FbrUomId = req.FbrUomId,
             FbrPdiTransTypeId = req.FbrPdiTransTypeId,
             CreatedAtUtc = DateTime.UtcNow,
@@ -180,6 +182,8 @@ public sealed class ProductProfilesController : ControllerBase
         existing.FbrProductType = string.IsNullOrWhiteSpace(req.FbrProductType) ? null : req.FbrProductType.Trim();
         existing.SroScheduleNoText = string.IsNullOrWhiteSpace(req.SroScheduleNoText) ? null : req.SroScheduleNoText.Trim();
         existing.SroItemRefText = string.IsNullOrWhiteSpace(req.SroItemRefText) ? null : req.SroItemRefText.Trim();
+        existing.FixedNotifiedApplicable = req.FixedNotifiedApplicable;
+        existing.MrpRateValue = req.MrpRateValue;
         existing.FbrUomId = req.FbrUomId;
         existing.FbrPdiTransTypeId = req.FbrPdiTransTypeId;
 
@@ -227,6 +231,8 @@ public sealed class ProductProfilesController : ControllerBase
             FbrProductType = p.FbrProductType,
             SroScheduleNoText = p.SroScheduleNoText,
             SroItemRefText = p.SroItemRefText,
+            FixedNotifiedApplicable = p.FixedNotifiedApplicable,
+            MrpRateValue = p.MrpRateValue,
             FbrUomId = p.FbrUomId,
             FbrPdiTransTypeId = p.FbrPdiTransTypeId,
             ProductImage = p.ProductImage,
@@ -312,6 +318,8 @@ public sealed class ProductProfilesController : ControllerBase
         public string? FbrProductType { get; set; }
         public string? SroScheduleNoText { get; set; }
         public string? SroItemRefText { get; set; }
+        public bool FixedNotifiedApplicable { get; set; }
+        public decimal? MrpRateValue { get; set; }
         public int? FbrUomId { get; set; }
         public int? FbrPdiTransTypeId { get; set; }
         public string? ProductImageBase64 { get; set; }
@@ -333,6 +341,8 @@ public sealed class ProductProfilesController : ControllerBase
         public string? FbrProductType { get; set; }
         public string? SroScheduleNoText { get; set; }
         public string? SroItemRefText { get; set; }
+        public bool FixedNotifiedApplicable { get; set; }
+        public decimal? MrpRateValue { get; set; }
         public int? FbrUomId { get; set; }
         public int? FbrPdiTransTypeId { get; set; }
         public string? ProductImage { get; set; }

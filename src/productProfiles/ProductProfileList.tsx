@@ -5,6 +5,8 @@ import {
     TopToolbar,
     useListContext,
     FunctionField,
+    ReferenceField,
+    TextField,
     useStore,
     useUpdate,
     useNotify,
@@ -56,6 +58,38 @@ function imgSrc(path?: string) {
     return `${API_BASE_URL}/${String(path).replace(/^\/+/, '')}`;
 }
 
+function SaleTypeDescription(props: { record: any }) {
+    const id = props.record?.fbrPdiTransTypeId ?? props.record?.saleTypeId ?? null;
+    if (id == null || id === '') return null;
+    return (
+        <ReferenceField
+            record={{ ...props.record, __saleTypeId: id }}
+            source="__saleTypeId"
+            reference="fbrPdiTransTypes"
+            link={false}
+            emptyText=""
+        >
+            <TextField source="description" />
+        </ReferenceField>
+    );
+}
+
+function UomDescription(props: { record: any }) {
+    const id = props.record?.fbrUomId ?? null;
+    if (id == null || id === '') return null;
+    return (
+        <ReferenceField
+            record={{ ...props.record, __uomId: id }}
+            source="__uomId"
+            reference="fbrPdiUoms"
+            link={false}
+            emptyText=""
+        >
+            <TextField source="description" />
+        </ReferenceField>
+    );
+}
+
 // ── Star (favourite) button ───────────────────────────────────────────────────
 function StarButton({ record }: { record: any }) {
     const [update] = useUpdate();
@@ -101,7 +135,7 @@ function ProductListActions() {
     ];
 
     return (
-        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: { xs: '4px', md: '12px' } }}>
+        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: 0 }}>
             <Box
                 sx={{
                     width: '100%',
@@ -324,7 +358,7 @@ function ProductKanban() {
                 {rows.map((r: any) => {
                     const src   = imgSrc(r?.productImage);
                     const name  = r?.productName ?? r?.productNo ?? 'Product';
-                    const price = r?.salePrice ?? r?.rate ?? null;
+                    const price = r?.rateValue ?? r?.salePrice ?? r?.rate ?? r?.rateId ?? null;
 
                     return (
                         <Paper
@@ -387,11 +421,9 @@ function ProductKanban() {
                                     </Typography>
                                 )}
 
-                                {r?.saleTypeId && (
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                        {r.saleTypeId}
-                                    </Typography>
-                                )}
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    <SaleTypeDescription record={r} />
+                                </Typography>
 
                                 {price != null && (
                                     <Typography variant="body2" fontWeight={700} sx={{ mt: 0.75, color: NAV_TEAL }}>
@@ -427,6 +459,7 @@ export default function ProductProfileList() {
                     rowClick="edit"
                     bulkActionButtons={false}
                     storeKey={PRODUCT_COLUMNS_STORE_KEY}
+                    hiddenColumns={['variantValues', 'fixedNotifiedApplicable']}
                     sx={{
                         '& .column-isFavourite': { width: 40, maxWidth: 40 },
                         '& .column-productImage': { width: 64 },
@@ -490,15 +523,22 @@ export default function ProductProfileList() {
                         />
                     </Column>
                     <Column source="hsCode" label="HS Code" />
-                    <Column source="saleTypeId" label="Sale Type" />
-                    <Column source="rateId" label="Rate">
+                    <Column source="saleTypeId" label="Sale Type" disableSort>
+                        <FunctionField label="" render={(record: any) => <SaleTypeDescription record={record} />} />
+                    </Column>
+                    <Column source="fbrProductType" label="Product Type" />
+                    <Column source="fbrUomId" label="FBR UOM (PDI)" disableSort>
+                        <FunctionField label="" render={(record: any) => <UomDescription record={record} />} />
+                    </Column>
+                    <Column source="rateValue" label="Sale Price">
                         <FunctionField
                             label=""
-                            source="rateId"
-                            render={(record: { rateId?: unknown }) => {
-                                const v = Number(record?.rateId);
+                            source="rateValue"
+                            render={(record: { rateValue?: unknown; rateId?: unknown; salePrice?: unknown }) => {
+                                const raw = record?.rateValue ?? record?.salePrice ?? record?.rateId;
+                                const v = Number(raw);
                                 if (Number.isNaN(v)) {
-                                    const r = record?.rateId;
+                                    const r = raw;
                                     return r == null || r === '' ? '' : String(r);
                                 }
                                 return v.toLocaleString(undefined, {
@@ -506,6 +546,51 @@ export default function ProductProfileList() {
                                     maximumFractionDigits: 2,
                                 });
                             }}
+                        />
+                    </Column>
+                    <Column source="purchasePrice" label="Purchase Price">
+                        <FunctionField
+                            label=""
+                            source="purchasePrice"
+                            render={(record: { purchasePrice?: unknown }) => {
+                                const v = Number(record?.purchasePrice);
+                                if (Number.isNaN(v)) {
+                                    const r = record?.purchasePrice;
+                                    return r == null || r === '' ? '' : String(r);
+                                }
+                                return v.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                });
+                            }}
+                        />
+                    </Column>
+                    <Column source="mrpRateValue" label="MRP Rate">
+                        <FunctionField
+                            label=""
+                            source="mrpRateValue"
+                            render={(record: { mrpRateValue?: unknown }) => {
+                                const v = Number(record?.mrpRateValue);
+                                if (Number.isNaN(v)) {
+                                    const r = record?.mrpRateValue;
+                                    return r == null || r === '' ? '' : String(r);
+                                }
+                                return v.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                });
+                            }}
+                        />
+                    </Column>
+                    <Column source="sroScheduleNoText" label="SRO Schedule Number" />
+                    <Column source="sroItemRefText" label="SRO Item" />
+                    <Column source="fixedNotifiedApplicable" label="Fixed Notified Applicable">
+                        <FunctionField
+                            label=""
+                            source="fixedNotifiedApplicable"
+                            render={(record: { fixedNotifiedApplicable?: unknown }) =>
+                                record?.fixedNotifiedApplicable ? 'Yes' : record?.fixedNotifiedApplicable === false ? 'No' : ''
+                            }
                         />
                     </Column>
                     <Column source="productNo" label="Product No" />

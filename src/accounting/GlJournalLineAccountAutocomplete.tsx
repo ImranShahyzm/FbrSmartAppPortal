@@ -49,7 +49,7 @@ async function fetchAccountsPage(
         const res = await dataProvider.getList('glChartAccounts', {
             pagination: { page, perPage: PAGE_SIZE },
             sort: { field: 'glCode', order: 'ASC' },
-            filter: q.trim() ? { q: q.trim() } : {},
+            filter: { postingOnly: true, ...(q.trim() ? { q: q.trim() } : {}) },
         });
         const raw = res.data as Record<string, unknown>[];
         const total = typeof res.total === 'number' && !Number.isNaN(res.total) ? res.total : raw.length;

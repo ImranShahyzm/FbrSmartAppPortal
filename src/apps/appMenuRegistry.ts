@@ -35,7 +35,7 @@ function menusForApp(app: AppRegistryEntry): RegisteredAppMenuEntry[] {
             { menuKey: `${bp}/dashboard`, pathLabel: `${n}/Dashboard`, appId: id },
             { menuKey: `${bp}/fbrInvoices`, pathLabel: `${n}/Sales/FBR Invoices`, appId: id },
             { menuKey: `${bp}/customers`, pathLabel: `${n}/Customers`, appId: id },
-            { menuKey: `${bp}/productProfiles`, pathLabel: `${n}/Catalog/Product Registration`, appId: id },
+            { menuKey: `${bp}/productProfiles`, pathLabel: `${n}/Catalog/Products`, appId: id },
             { menuKey: `${bp}/fbrSalesTaxRates`, pathLabel: `${n}/Catalog/Taxes`, appId: id },
             { menuKey: `${bp}/companies`, pathLabel: `${n}/Catalog/Company`, appId: id },
             { menuKey: `${bp}/fbrScenarios`, pathLabel: `${n}/Catalog/FBR Scenarios`, appId: id },
@@ -56,6 +56,7 @@ function menusForApp(app: AppRegistryEntry): RegisteredAppMenuEntry[] {
             { menuKey: `${bp}/cashReceipts/create`, pathLabel: `${n}/Transaction/Receipts/Cash receipts`, appId: id },
             { menuKey: `${bp}/glChartAccounts`, pathLabel: `${n}/Configuration/Chart of accounts`, appId: id },
             { menuKey: `${bp}/glVoucherTypes`, pathLabel: `${n}/Configuration/Voucher types`, appId: id },
+            { menuKey: `${bp}/glAccountGroups`, pathLabel: `${n}/Configuration/Accounts groups`, appId: id },
             { menuKey: `${bp}/genBankInformation`, pathLabel: `${n}/Configuration/Bank information`, appId: id },
             { menuKey: `${bp}/genCashInformation`, pathLabel: `${n}/Configuration/Cash information`, appId: id },
         ];

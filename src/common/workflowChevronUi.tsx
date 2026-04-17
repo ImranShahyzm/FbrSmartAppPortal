@@ -9,9 +9,11 @@ const CHEVRON_OVERLAP = 10;
 export function StatusBreadcrumb({
     stages,
     activeKey,
+    onStageClick,
 }: {
     stages: Array<{ key: string; label: string }>;
     activeKey: string;
+    onStageClick?: (key: string) => void;
 }) {
     const theme = useTheme();
     const activeIdx = stages.findIndex(s => s.key === activeKey);
@@ -23,6 +25,7 @@ export function StatusBreadcrumb({
                 const isActive = i === activeIdx;
                 const isFirst = i === 0;
                 const isLast = i === stages.length - 1;
+                const clickable = Boolean(onStageClick);
 
                 const pastBg = alpha(theme.palette.primary.main, 0.42);
                 const bg = isActive
@@ -49,6 +52,19 @@ export function StatusBreadcrumb({
                 return (
                     <Box
                         key={s.key}
+                        role={clickable ? 'button' : undefined}
+                        tabIndex={clickable ? 0 : undefined}
+                        onClick={clickable ? () => onStageClick?.(s.key) : undefined}
+                        onKeyDown={
+                            clickable
+                                ? e => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
+                                          onStageClick?.(s.key);
+                                      }
+                                  }
+                                : undefined
+                        }
                         sx={{
                             position: 'relative',
                             ml: i === 0 ? 0 : `-${CHEVRON_OVERLAP}px`,
@@ -67,6 +83,20 @@ export function StatusBreadcrumb({
                             userSelect: 'none',
                             transition: 'background 0.15s',
                             whiteSpace: 'nowrap',
+                            cursor: clickable ? 'pointer' : 'default',
+                            '&:hover': clickable
+                                ? {
+                                      filter: 'brightness(0.97)',
+                                  }
+                                : undefined,
+                            '&:focus-visible': clickable
+                                ? {
+                                      outline: '2px solid',
+                                      outlineColor: theme.palette.primary.main,
+                                      outlineOffset: 2,
+                                      borderRadius: 1,
+                                  }
+                                : undefined,
                         }}
                     >
                         {s.label}

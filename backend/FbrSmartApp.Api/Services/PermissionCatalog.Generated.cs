@@ -27,6 +27,7 @@ internal static class PermissionCatalogGenerated
             "Accounting",
             [
                 new PermissionCatalog.ResourceEntry("glChartAccounts", "Chart of accounts"),
+                new PermissionCatalog.ResourceEntry("glAccountGroups", "Account groups"),
                 new PermissionCatalog.ResourceEntry("glVoucherTypes", "Voucher types"),
                 new PermissionCatalog.ResourceEntry("glJournalVouchers", "Journal vouchers"),
                 new PermissionCatalog.ResourceEntry("glAccountTypes", "GL account types"),

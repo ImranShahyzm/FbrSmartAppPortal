@@ -45,6 +45,7 @@ export function OdooShellMobileNav() {
     const canReadCoa = useAccountingAccess('glChartAccounts', 'read');
     const canJv = useAccountingAccess('glJournalVouchers', 'read');
     const canVoucherTypes = useAccountingAccess('glVoucherTypes', 'read');
+    const canAccountGroups = useAccountingAccess('glAccountGroups', 'read');
     const canGenBank = useAccountingAccess('genBankInformation', 'read');
     const canGenCash = useAccountingAccess('genCashInformation', 'read');
     const canReports = useCanAccess(ACCOUNTING_SUITE_APP_ID, 'accountingReports', 'read');
@@ -169,6 +170,11 @@ export function OdooShellMobileNav() {
                         <ListItemText primary={translate('shell.accounting.voucher_types')} />
                     </ListItemButton>
                 ) : null}
+                {canAccountGroups ? (
+                    <ListItemButton component={Link} to={p('/glAccountGroups')} onClick={close} sx={itemSx}>
+                        <ListItemText primary={translate('shell.accounting.account_groups', { _: 'Account groups' })} />
+                    </ListItemButton>
+                ) : null}
                 {canGenBank ? (
                     <ListItemButton component={Link} to={p('/genBankInformation')} onClick={close} sx={itemSx}>
                         <ListItemText primary={translate('shell.accounting.bank_information')} />
@@ -248,7 +254,7 @@ export function OdooShellMobileNav() {
                     {translate('pos.menu.catalog', { _: 'Catalog' })}
                 </ListSubheader>
                 <ListItemButton component={Link} to={p('/productProfiles')} onClick={close} sx={itemSx}>
-                    <ListItemText primary="Product Registration" />
+                    <ListItemText primary="Products" />
                 </ListItemButton>
                 <ListItemButton component={Link} to={p('/fbrSalesTaxRates')} onClick={close} sx={itemSx}>
                     <ListItemText

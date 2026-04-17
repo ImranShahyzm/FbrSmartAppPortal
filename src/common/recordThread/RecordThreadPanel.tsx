@@ -15,6 +15,8 @@ import {
     Card,
     CardContent,
     ClickAwayListener,
+    Dialog,
+    DialogContent,
     Divider,
     List,
     ListItem,
@@ -38,7 +40,8 @@ import {
 } from '../../api/recordThreadApi';
 import { MentionNoteBody } from './MentionNoteBody';
 
-const MAX_ATTACH_BYTES = 400_000;
+// Images from phones/screenshots are often > 400KB. Keep this reasonable for DB storage (base64 inflates).
+const MAX_ATTACH_BYTES = 3_000_000;
 
 /** Matches FbrAdminPortal companies chatter panel. */
 const PANEL_BG = '#f0f4fa';
@@ -146,6 +149,10 @@ function attachmentFileIcon(mime: string) {
     return <InsertDriveFile sx={{ fontSize: 18 }} />;
 }
 
+function isImageMime(mime: string) {
+    return (mime || '').toLowerCase().startsWith('image/');
+}
+
 type FileLinkProps = {
     name: string;
     mime: string;
@@ -177,6 +184,54 @@ function FileAttachmentLink({ name, mime, dataBase64 }: FileLinkProps) {
             <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
                 {display}
             </Typography>
+        </Box>
+    );
+}
+
+function ImageThumb({
+    name,
+    mime,
+    dataBase64,
+    onClick,
+}: {
+    name: string;
+    mime: string;
+    dataBase64: string;
+    onClick: () => void;
+}) {
+    const src = `data:${mime || 'image/*'};base64,${dataBase64}`;
+    return (
+        <Box
+            role="button"
+            tabIndex={0}
+            onClick={onClick}
+            onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') onClick();
+            }}
+            sx={{
+                width: 88,
+                height: 66,
+                borderRadius: 1,
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&:hover': { borderColor: 'primary.main' },
+                outline: 'none',
+            }}
+            title={name}
+        >
+            <Box
+                component="img"
+                src={src}
+                alt={name}
+                loading="lazy"
+                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
         </Box>
     );
 }
@@ -222,6 +277,11 @@ export function RecordThreadPanel(props: RecordThreadPanelProps) {
     const [loading, setLoading] = React.useState(false);
     const [posting, setPosting] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [preview, setPreview] = React.useState<{
+        name: string;
+        mime: string;
+        dataBase64: string;
+    } | null>(null);
 
     const load = React.useCallback(async () => {
         if (!recordId) return;
@@ -284,6 +344,9 @@ export function RecordThreadPanel(props: RecordThreadPanelProps) {
             }
         }
         setPendingFiles(p => [...p, ...next]);
+        if (files.length > next.length) {
+            setError(`Some attachments were skipped (max ${(MAX_ATTACH_BYTES / 1_000_000).toFixed(1)}MB each).`);
+        }
         e.target.value = '';
     };
 
@@ -410,6 +473,12 @@ export function RecordThreadPanel(props: RecordThreadPanelProps) {
         const whenFull = formatFullDateTime(m.createdAtUtc);
 
         if (Number(m.kind) === 0) {
+            const imageAtt = (m.attachments ?? []).filter(
+                a => a?.dataBase64 && isImageMime(a?.mime || '')
+            ) as { name?: string; mime?: string; dataBase64?: string }[];
+            const otherAtt = (m.attachments ?? []).filter(
+                a => !a?.dataBase64 || !isImageMime(a?.mime || '')
+            );
             return (
                 <ListItem
                     alignItems="flex-start"
@@ -456,15 +525,38 @@ export function RecordThreadPanel(props: RecordThreadPanelProps) {
                                     </Typography>
                                 ) : null}
                                 {m.attachments?.length ? (
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.35 }}>
-                                        {m.attachments.map((a, i) => (
-                                            <FileAttachmentLink
-                                                key={`${m.id}-att-${i}`}
-                                                name={a.name || 'file'}
-                                                mime={a.mime || 'application/octet-stream'}
-                                                dataBase64={a.dataBase64}
-                                            />
-                                        ))}
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.6, mt: 0.35 }}>
+                                        {imageAtt.length > 0 ? (
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                                                {imageAtt.map((a, i) => (
+                                                    <ImageThumb
+                                                        key={`${m.id}-img-${i}`}
+                                                        name={a.name || 'image'}
+                                                        mime={a.mime || 'image/*'}
+                                                        dataBase64={String(a.dataBase64)}
+                                                        onClick={() =>
+                                                            setPreview({
+                                                                name: a.name || 'image',
+                                                                mime: a.mime || 'image/*',
+                                                                dataBase64: String(a.dataBase64),
+                                                            })
+                                                        }
+                                                    />
+                                                ))}
+                                            </Box>
+                                        ) : null}
+                                        {otherAtt.length > 0 ? (
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                {otherAtt.map((a, i) => (
+                                                    <FileAttachmentLink
+                                                        key={`${m.id}-att-${i}`}
+                                                        name={a.name || 'file'}
+                                                        mime={a.mime || 'application/octet-stream'}
+                                                        dataBase64={a.dataBase64}
+                                                    />
+                                                ))}
+                                            </Box>
+                                        ) : null}
                                     </Box>
                                 ) : null}
                             </Box>
@@ -541,19 +633,38 @@ export function RecordThreadPanel(props: RecordThreadPanelProps) {
     }
 
     return (
-        <Card
-            variant="outlined"
-            sx={{
-                position: { md: 'sticky' },
-                top: { md: 16 },
-                maxHeight: { md: 'calc(100vh - 120px)' },
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                bgcolor: PANEL_BG,
-                borderColor: PANEL_BORDER,
-            }}
-        >
+        <>
+            <Dialog
+                open={preview != null}
+                onClose={() => setPreview(null)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogContent sx={{ p: 0, bgcolor: 'black' }}>
+                    {preview ? (
+                        <Box
+                            component="img"
+                            src={`data:${preview.mime};base64,${preview.dataBase64}`}
+                            alt={preview.name}
+                            sx={{ width: '100%', height: 'auto', display: 'block' }}
+                        />
+                    ) : null}
+                </DialogContent>
+            </Dialog>
+
+            <Card
+                variant="outlined"
+                sx={{
+                    position: { md: 'sticky' },
+                    top: { md: 16 },
+                    maxHeight: { md: 'calc(100vh - 120px)' },
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    bgcolor: PANEL_BG,
+                    borderColor: PANEL_BORDER,
+                }}
+            >
             <CardContent
                 sx={{
                     pt: 1.25,
@@ -608,17 +719,42 @@ export function RecordThreadPanel(props: RecordThreadPanelProps) {
                         />
                         {pendingFiles.length > 0 && (
                             <Box sx={{ mt: 0.75, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                {pendingFiles.map((f, i) => (
-                                    <Box
-                                        key={`${f.name}-${i}`}
-                                        sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
-                                    >
-                                        {attachmentFileIcon(f.mime)}
-                                        <Typography variant="caption" color="text.secondary">
-                                            {f.name}
-                                        </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                                    {pendingFiles
+                                        .filter(f => isImageMime(f.mime) && f.dataBase64)
+                                        .map((f, i) => (
+                                            <ImageThumb
+                                                key={`${f.name}-${i}`}
+                                                name={f.name}
+                                                mime={f.mime}
+                                                dataBase64={f.dataBase64}
+                                                onClick={() =>
+                                                    setPreview({
+                                                        name: f.name,
+                                                        mime: f.mime,
+                                                        dataBase64: f.dataBase64,
+                                                    })
+                                                }
+                                            />
+                                        ))}
+                                </Box>
+                                {pendingFiles.some(f => !isImageMime(f.mime)) ? (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                        {pendingFiles
+                                            .filter(f => !isImageMime(f.mime))
+                                            .map((f, i) => (
+                                                <Box
+                                                    key={`${f.name}-${i}`}
+                                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                                                >
+                                                    {attachmentFileIcon(f.mime)}
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {f.name}
+                                                    </Typography>
+                                                </Box>
+                                            ))}
                                     </Box>
-                                ))}
+                                ) : null}
                             </Box>
                         )}
                         {error ? (
@@ -742,6 +878,7 @@ export function RecordThreadPanel(props: RecordThreadPanelProps) {
                     )}
                 </List>
             </CardContent>
-        </Card>
+            </Card>
+        </>
     );
 }
