@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\User\\FbrSmartAppPortal\\Backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj": {}
+    "C:\\Users\\User\\FbrSmartAppPortal\\backend\\fbrsmartapp.api\\FbrSmartApp.Api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\User\\FbrSmartAppPortal\\Backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj": {
+    "C:\\Users\\User\\FbrSmartAppPortal\\backend\\fbrsmartapp.api\\FbrSmartApp.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\User\\FbrSmartAppPortal\\Backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj",
+        "projectUniqueName": "C:\\Users\\User\\FbrSmartAppPortal\\backend\\fbrsmartapp.api\\FbrSmartApp.Api.csproj",
         "projectName": "FbrSmartApp.Api",
-        "projectPath": "C:\\Users\\User\\FbrSmartAppPortal\\Backend\\FbrSmartApp.Api\\FbrSmartApp.Api.csproj",
+        "projectPath": "C:\\Users\\User\\FbrSmartAppPortal\\backend\\fbrsmartapp.api\\FbrSmartApp.Api.csproj",
         "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\User\\FbrSmartAppPortal\\Backend\\FbrSmartApp.Api\\obj\\",
+        "outputPath": "C:\\Users\\User\\FbrSmartAppPortal\\backend\\fbrsmartapp.api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config"
