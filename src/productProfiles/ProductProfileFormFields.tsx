@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ReferenceInput, required } from 'react-admin';
+import { BooleanInput, ReferenceInput, required } from 'react-admin';
 import { useWatch } from 'react-hook-form';
 import { Box, Card, CardContent, Grid, Typography } from '@mui/material';
 import { ProductImageBase64Input } from './ProductImageBase64Input';
@@ -21,6 +21,11 @@ const FBR_PRODUCT_TYPE_CHOICES = [
 
 export function ProductProfileFormFields() {
     const productName = useWatch({ name: 'productName' }) as string | undefined;
+    const sroScheduleNoText = useWatch({ name: 'sroScheduleNoText' }) as string | undefined;
+    const sroItemRefText = useWatch({ name: 'sroItemRefText' }) as string | undefined;
+    const showFixedNotifiedFields =
+        Boolean(sroScheduleNoText && String(sroScheduleNoText).trim().length > 0) ||
+        Boolean(sroItemRefText && String(sroItemRefText).trim().length > 0);
     const [allowedUomIds, setAllowedUomIds] = React.useState<number[] | null>(null);
 
     return (
@@ -77,7 +82,7 @@ export function ProductProfileFormFields() {
                         <ProductProfileFbrHsUomFields allowedUomIds={allowedUomIds} />
 
                         <Box sx={{ mt: 1, width: '100%' }}>
-                            <FieldRow label="Sale Type Fbr">
+                            <FieldRow label="Sale Type FBR">
                                 <ReferenceInput
                                     source="fbrPdiTransTypeId"
                                     reference="fbrPdiTransTypes"
@@ -120,7 +125,7 @@ export function ProductProfileFormFields() {
                                 </Grid>
                             </Grid>
 
-                            <FieldRow label="Sro Schedule Number">
+                            <FieldRow label="SRO Schedule Number">
                                 <CompactTextInput
                                     source="sroScheduleNoText"
                                     label={false}
@@ -137,6 +142,33 @@ export function ProductProfileFormFields() {
                                     placeholder="e.g. 45(i) (optional)"
                                 />
                             </FieldRow>
+
+                            {showFixedNotifiedFields ? (
+                                <Grid container columnSpacing={2} rowSpacing={0} sx={{ width: '100%', mb: '4px' }}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FieldRow label="Fixed Notified Applicable">
+                                            <BooleanInput
+                                                source="fixedNotifiedApplicable"
+                                                label={false}
+                                                sx={{
+                                                    '& .MuiFormControlLabel-root': { m: 0 },
+                                                    '& .MuiFormHelperText-root': { display: 'none' },
+                                                    '& .MuiCheckbox-root': { p: '4px' },
+                                                }}
+                                            />
+                                        </FieldRow>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FieldRow label="MRP Rate">
+                                            <CompactNumberInput
+                                                source="mrpRateValue"
+                                                label={false}
+                                                fullWidth
+                                            />
+                                        </FieldRow>
+                                    </Grid>
+                                </Grid>
+                            ) : null}
                         </Box>
                     </Grid>
 

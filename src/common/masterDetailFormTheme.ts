@@ -14,6 +14,7 @@ export const stickySimpleFormHeaderBarSx: SxProps<Theme> = {
     border: '1px solid',
     borderColor: 'divider',
     borderRadius: 1,
+    width: '100%',
     px: 2,
     py: '6px',
     mb: 1.5,

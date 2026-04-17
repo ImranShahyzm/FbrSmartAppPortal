@@ -82,10 +82,9 @@ function expandPaymentPairedCredits(lines: ApiLineBody[], bankCashGlAccountId: n
             throw new Error(`${label} lines must use debit only. Remove credit amounts from detail lines.`);
         }
         if (dr > 0) {
-            if (gid === bankCashGlAccountId) {
-                throw new Error('Do not post debits directly to the control account; use other GL lines.');
-            }
             out.push(line);
+            // Always generate the paired control credit line (even when the user selects the same
+            // bank/cash account on the detail line) so DB behavior is consistent.
             out.push({
                 glAccountId: bankCashGlAccountId,
                 narration: line.narration,
@@ -115,10 +114,9 @@ function expandReceiptPairedDebits(lines: ApiLineBody[], bankCashGlAccountId: nu
             throw new Error(`${label} lines must use credit only. Remove debit amounts from detail lines.`);
         }
         if (cr > 0) {
-            if (gid === bankCashGlAccountId) {
-                throw new Error('Do not post credits directly to the control account; use other GL lines.');
-            }
             out.push(line);
+            // Always generate the paired control debit line (even when the user selects the same
+            // bank/cash account on the detail line) so DB behavior is consistent.
             out.push({
                 glAccountId: bankCashGlAccountId,
                 narration: line.narration,

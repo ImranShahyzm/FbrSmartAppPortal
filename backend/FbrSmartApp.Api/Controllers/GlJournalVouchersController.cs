@@ -544,6 +544,74 @@ public sealed class GlJournalVouchersController : ControllerBase
         return await GetOne(id, ct);
     }
 
+    public sealed class SetApprovalStatusDto
+    {
+        public string? code { get; set; }
+    }
+
+    /// <summary>
+    /// Set approval status directly (used to reset workflow backwards).
+    /// Allowed codes: draft, approved, confirmed.
+    /// </summary>
+    [HttpPost("{id:int}/set-approval-status")]
+    [HasPermission("accounting.glJournalVouchers.write")]
+    public async Task<IActionResult> SetApprovalStatus(int id, [FromBody] SetApprovalStatusDto body, CancellationToken ct)
+    {
+        var companyId = GetCompanyIdOrThrow();
+        var user = await GetCurrentUserAsync(ct);
+        if (user is null) return Unauthorized();
+
+        var nextCode = (body.code ?? "").Trim().ToLowerInvariant();
+        if (nextCode is not ("draft" or "approved" or "confirmed"))
+            return BadRequest(new { message = "Invalid status. Allowed: draft, approved, confirmed." });
+
+        var entity = await _db.GlVoucherMains.FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
+        if (entity is null) return NotFound();
+        if (entity.Cancelled)
+            return BadRequest(new { message = "Voided vouchers cannot be reset." });
+
+        var currentCode = await GetApprovalStatusCodeAsync(entity.ApprovalStatusId, ct);
+        if (string.Equals(currentCode, "deleted", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "This voucher cannot be reset." });
+
+        // Posted vouchers are read-only; allow resetting only for Admin or users with delete permission.
+        if (entity.Posted || entity.ReadOnly)
+        {
+            var canUnpost =
+                User.IsInRole("Admin") ||
+                User.HasClaim(PermissionCatalog.ClaimPermission, "accounting.glJournalVouchers.delete");
+            if (!canUnpost)
+                return BadRequest(new { message = "You are not allowed to reset a posted voucher." });
+        }
+
+        // No-op: already at desired status
+        if (string.Equals(currentCode, nextCode, StringComparison.OrdinalIgnoreCase))
+            return await GetOne(id, ct);
+
+        entity.ApprovalStatusId = await GetApprovalStatusIdByCodeAsync(nextCode, ct);
+        if (entity.Posted)
+        {
+            // Unpost: move back into editable workflow.
+            entity.Posted = false;
+            entity.ReadOnly = false;
+            entity.PostedAtUtc = null;
+            entity.PostedByUserId = null;
+        }
+        await _db.SaveChangesAsync(ct);
+
+        await _recordMessages.AddSystemAsync(
+            companyId,
+            ResourceKey,
+            id.ToString(CultureInfo.InvariantCulture),
+            "StatusChanged",
+            user.Id,
+            user.FullName,
+            ct,
+            $"Voucher status changed from {currentCode} to {nextCode} by {ActorLabel(user)}.");
+
+        return await GetOne(id, ct);
+    }
+
     [HttpPost("{id:int}/void")]
     [HasPermission("accounting.glJournalVouchers.write")]
     public async Task<IActionResult> VoidVoucher(int id, CancellationToken ct)
@@ -868,8 +936,10 @@ public sealed class GlJournalVouchersController : ControllerBase
         {
             var cash = await _db.GenCashInformations.AsNoTracking()
                 .FirstOrDefaultAsync(b => b.CompanyId == companyId && b.CashAccount == bankCashGlAccountId, ct);
+            // Allow saving even when the cash GL isn't registered in Cash information.
+            // (Default control account is used to ease user workflow.)
             if (cash is null)
-                return BadRequest(new { message = "Select a cash account registered under Cash information." });
+                return null;
 
             // If a cash account has assigned users, only those users may use it in cash vouchers.
             var assignedCount = await _db.GenCashInformationUsers.AsNoTracking()

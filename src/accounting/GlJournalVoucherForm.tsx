@@ -88,6 +88,7 @@ function JournalDocHeading({
 function JournalVoucherWorkflowBar({
     voucherId,
     canWrite,
+    canDelete,
     approvalStatusCode,
     posted,
     cancelled,
@@ -95,6 +96,7 @@ function JournalVoucherWorkflowBar({
 }: {
     voucherId: number | null;
     canWrite: boolean;
+    canDelete: boolean;
     approvalStatusCode: string;
     posted: boolean;
     cancelled: boolean;
@@ -104,6 +106,7 @@ function JournalVoucherWorkflowBar({
     const translate = useTranslate();
     const refresh = useRefresh();
     const [loading, setLoading] = React.useState<'approve' | 'confirm' | 'post' | 'void' | null>(null);
+    const [statusResetBusy, setStatusResetBusy] = React.useState(false);
 
     const code = String(approvalStatusCode ?? 'draft').toLowerCase();
     const st = cancelled || code === 'deleted' ? 'deleted' : code;
@@ -185,6 +188,39 @@ function JournalVoucherWorkflowBar({
         }
     };
 
+    const onClickStatus = React.useCallback(async (next: string) => {
+        if (voucherId == null) return;
+        if (!canWrite) return;
+        const nextCode = String(next ?? '').toLowerCase();
+        if (nextCode !== 'draft' && nextCode !== 'approved' && nextCode !== 'confirmed') return;
+        if (st === 'deleted' || cancelled) return;
+        if (posted && !canDelete) return;
+        if (nextCode === st) return;
+        setStatusResetBusy(true);
+        try {
+            const res = await apiFetch(
+                `/api/glJournalVouchers/${voucherId}/set-approval-status`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: nextCode }),
+                },
+                { auth: true, retryOn401: true }
+            );
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                notify((j as { message?: string }).message ?? 'Request failed', { type: 'warning' });
+                return;
+            }
+            notify(translate('resources.glJournalVouchers.notifications.status_reset_ok', { _: 'Status updated.' }), { type: 'success' });
+            refresh();
+        } catch (e) {
+            notify(e instanceof Error ? e.message : 'Request failed', { type: 'warning' });
+        } finally {
+            setStatusResetBusy(false);
+        }
+    }, [voucherId, canWrite, canDelete, st, posted, cancelled, notify, translate, refresh]);
+
     if (voucherId == null) return null;
 
     return (
@@ -204,7 +240,7 @@ function JournalVoucherWorkflowBar({
                         label={translate('resources.glJournalVouchers.actions.approve')}
                         variant="primary"
                         loading={loading === 'approve'}
-                        disabled={loading !== null}
+                        disabled={loading !== null || statusResetBusy}
                         onClick={() => void run('approve', 'approve')}
                     />
                 ) : null}
@@ -213,7 +249,7 @@ function JournalVoucherWorkflowBar({
                         label={translate('resources.glJournalVouchers.actions.confirm')}
                         variant="primary"
                         loading={loading === 'confirm'}
-                        disabled={loading !== null}
+                        disabled={loading !== null || statusResetBusy}
                         onClick={() => void run('confirm', 'confirm')}
                     />
                 ) : null}
@@ -222,7 +258,7 @@ function JournalVoucherWorkflowBar({
                         label={translate('resources.glJournalVouchers.actions.post')}
                         variant="primary"
                         loading={loading === 'post'}
-                        disabled={loading !== null}
+                        disabled={loading !== null || statusResetBusy}
                         onClick={() => void run('post', 'post')}
                     />
                 ) : null}
@@ -231,12 +267,12 @@ function JournalVoucherWorkflowBar({
                         label={translate('resources.glJournalVouchers.actions.void')}
                         variant="danger"
                         loading={loading === 'void'}
-                        disabled={loading !== null}
+                        disabled={loading !== null || statusResetBusy}
                         onClick={() => void run('void', 'void')}
                     />
                 ) : null}
             </Box>
-            <StatusBreadcrumb stages={displayStages} activeKey={activeBreadcrumbKey} />
+            <StatusBreadcrumb stages={displayStages} activeKey={activeBreadcrumbKey} onStageClick={k => void onClickStatus(k)} />
         </Box>
     );
 }
@@ -351,7 +387,7 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
     const showBankAndChequeDateW = useWatch({ name: 'showBankAndChequeDate' }) as boolean | undefined;
     const showChequeFields =
         Boolean(forceShowChequeFieldsProp) ||
-        (Boolean(showBankAndChequeDateW) && Boolean(bankCashLinkKind));
+        (Boolean(showBankAndChequeDateW) && bankCashLinkKind === 'bank');
 
     const voucherTypeFilter = React.useMemo(() => {
         if (!isCreate && voucherTypeIdW != null && voucherTypeIdW !== '')
@@ -578,7 +614,12 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                 : `${translate('resources.glJournalVouchers.title_one')} ${voucherNo || `#${id ?? ''}`}`
                         }
                         subtitle={translate('resources.glJournalVouchers.subtitle')}
-                        leadingActions={
+                        sx={{
+                            // Match dashboard tight spacing under the top nav (AppShell already adds a 2px gap).
+                            mb: 1,
+                            py: '4px',
+                        }}
+                        navigationActions={
                             !isCreate ? (
                                 <PrevNextButtons
                                     resource="glJournalVouchers"
@@ -616,6 +657,7 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                             <JournalVoucherWorkflowBar
                                 voucherId={id}
                                 canWrite={canWrite}
+                                canDelete={canDelete}
                                 approvalStatusCode={approvalStatusCode}
                                 posted={posted}
                                 cancelled={cancelled}
@@ -723,6 +765,7 @@ export function GlJournalVoucherForm(props: GlJournalVoucherFormProps) {
                                                         filterToQuery={(q: string) => ({
                                                             q,
                                                             bankCashLinkKind,
+                                                            postingOnly: true,
                                                         })}
                                                         fullWidth
                                                         parse={v => v ?? null}

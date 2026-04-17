@@ -9,7 +9,6 @@ import {
     Box,
     Card,
     CardContent,
-    Divider,
     Grid,
     Tab,
     Tabs,
@@ -17,21 +16,22 @@ import {
 } from '@mui/material';
 
 import {
-    FormHeaderToolbar,
     FormSaveBridge,
+    FormDocumentWorkflowBar,
     FORM_SAVE_GEN_BANK_INFORMATION,
 } from '../../common/formToolbar';
 import {
     masterDetailTabbedCardContentSx,
     masterDetailTabbedCardSx,
     masterDetailTabsSx,
-    stickySimpleFormHeaderBarSx,
 } from '../../common/masterDetailFormTheme';
 import {
     CompactTextInput,
     FieldRow,
 } from '../../common/odooCompactFormFields';
 import { GenChequeBooksTabPanel } from './GenChequeBooksTabPanel';
+
+const NAV_TEAL = '#3d7a7a';
 
 const BANK_TAB_LABELS = ['Cheque book details'] as const;
 
@@ -58,36 +58,22 @@ export function GenBankInformationFormInner({ variant }: { variant: 'create' | '
         <>
             <FormSaveBridge eventName={FORM_SAVE_GEN_BANK_INFORMATION} />
 
-            {/* ── Sticky header bar ── */}
-            <Box sx={stickySimpleFormHeaderBarSx}>
-                <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ fontSize: '0.85rem' }}>
-                        {translate('resources.genBankInformation.name', { smart_count: 1 })}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.72rem' }}>
-                        {translate('shell.accounting.bank_information_subtitle', {
-                            _: 'Bank accounts and linked chart postings (GL type 9).',
-                        })}
-                    </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                    {variant === 'edit' && (
-                        <>
-                            <PrevNextButtons
-                                resource="genBankInformation"
-                                sort={{ field: 'id', order: 'DESC' }}
-                            />
-                            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-                        </>
-                    )}
-                    <FormHeaderToolbar
-                        saveEventName={FORM_SAVE_GEN_BANK_INFORMATION}
-                        resource="genBankInformation"
-                        listPath="/genBankInformation"
-                        showDelete={variant === 'edit'}
-                    />
-                </Box>
-            </Box>
+            <FormDocumentWorkflowBar
+                saveEventName={FORM_SAVE_GEN_BANK_INFORMATION}
+                resource="genBankInformation"
+                listPath="/genBankInformation"
+                title={translate('resources.genBankInformation.name', { smart_count: 1 })}
+                subtitle={translate('shell.accounting.bank_information_subtitle', {
+                    _: 'Bank accounts and linked chart postings (GL type 9).',
+                })}
+                showDelete={variant === 'edit'}
+                sx={{ borderColor: NAV_TEAL }}
+                navigationActions={
+                    variant === 'edit' ? (
+                        <PrevNextButtons resource="genBankInformation" sort={{ field: 'id', order: 'DESC' }} />
+                    ) : null
+                }
+            />
 
             {/* ── Primary detail card ── */}
             <Card
@@ -105,11 +91,10 @@ export function GenBankInformationFormInner({ variant }: { variant: 'create' | '
 
                     {/* Section header */}
                     <Box sx={{ mb: 1 }}>
-                        <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                            Bank Information
-                        </Typography>
                         <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2, fontSize: '1.25rem' }}>
-                            {variant === 'create' ? 'New bank account' : 'Edit bank account'}
+                            {variant === 'create'
+                                ? translate('shell.accounting.bank_account_new', { _: 'New bank account' })
+                                : translate('shell.accounting.bank_account_edit', { _: 'Edit bank account' })}
                         </Typography>
                     </Box>
 

@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Create, HttpError, SimpleForm, useNotify, useRedirect } from 'react-admin';
-import { Box, Divider, Typography } from '@mui/material';
 
 import { apiFetch } from '../../api/httpClient';
 import { mapCheckBooksToApi } from './checkBookPayload';
@@ -78,52 +77,21 @@ export function GenBankInformationCreate() {
             sx={{
                 width: '100%',
                 maxWidth: '100%',
-                '& .RaCreate-main': { maxWidth: '100%', width: '100%' },
+                '& .RaCreate-main': { maxWidth: '100%', width: '100%', p: 0, pt: 0, mt: 0 },
+                '& .RaCreate-content': { p: 0, pt: 0, mt: 0 },
                 '& .RaCreate-card': {
                     maxWidth: '100% !important',
                     width: '100%',
+                    m: 0,
                     boxShadow: 'none',
                 },
             }}
         >
             <SimpleForm
-                sx={{ maxWidth: 'none', width: '100%' }}
+                sx={{ maxWidth: 'none', width: '100%', p: 0, pt: 0, mt: 0 }}
                 toolbar={false}
                 defaultValues={{ checkBooks: [], validateChequeBook: false }}
             >
-                <Box
-                    sx={{
-                        position: { md: 'sticky' },
-                        top: { md: 0 },
-                        zIndex: 5,
-                        bgcolor: 'background.paper',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        px: 2,
-                        py: '6px',
-                        mb: 1.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 2,
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ fontSize: '0.85rem' }}>
-                            {String('Bank information')}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.72rem' }}>
-                            {String('All changes are saved on the server.')}
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-                        {/* Form header toolbar is inside GenBankInformationFormInner */}
-                    </Box>
-                </Box>
-
                 <OdooSplitFormLayout>
                     <GenBankInformationFormInner variant="create" />
                 </OdooSplitFormLayout>

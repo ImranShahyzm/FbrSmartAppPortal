@@ -10,6 +10,10 @@ public static class AppRecordMessagePolicy
         if (string.IsNullOrWhiteSpace(resourceKey)) return false;
         switch (resourceKey.Trim().ToLowerInvariant())
         {
+            case "fbrinvoices":
+                readPermission = "fbr.fbrInvoices.read";
+                writePermission = "fbr.fbrInvoices.write";
+                return true;
             case "glvouchertypes":
                 readPermission = "accounting.glVoucherTypes.read";
                 writePermission = "accounting.glVoucherTypes.write";
@@ -25,6 +29,10 @@ public static class AppRecordMessagePolicy
             case "gencashinformation":
                 readPermission = "accounting.genCashInformation.read";
                 writePermission = "accounting.genCashInformation.write";
+                return true;
+            case "glchartaccounts":
+                readPermission = "accounting.glChartAccounts.read";
+                writePermission = "accounting.glChartAccounts.write";
                 return true;
             default:
                 return false;

@@ -215,8 +215,15 @@ app.MapFallbackToFile("index.html");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
-    await SchemaUpgrader.ApplyAsync(db);
+    if (app.Environment.IsDevelopment())
+    {
+        await db.Database.EnsureCreatedAsync();
+        await SchemaUpgrader.ApplyAsync(db);
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+    }
     await SeedData.EnsureSeededAsync(scope.ServiceProvider);
 
     var adminDb = scope.ServiceProvider.GetRequiredService<AdminPortalDbContext>();

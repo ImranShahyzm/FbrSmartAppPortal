@@ -8,6 +8,7 @@ export default {
     create: ProductProfileCreate,
     edit: ProductProfileEdit,
     icon: Inventory2Icon,
+    options: { label: 'Products' },
     recordRepresentation: (record: any) =>
         record?.productName ? `${record.productName}` : `${record?.id ?? ''}`,
 };

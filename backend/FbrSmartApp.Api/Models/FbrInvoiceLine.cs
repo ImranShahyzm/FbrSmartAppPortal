@@ -24,6 +24,15 @@ public sealed class FbrInvoiceLine
     /// <summary>Discount percent (0-100) captured on the line.</summary>
     public decimal DiscountRate { get; set; }
 
+    /// <summary>
+    /// When true, tax base for this line is MRP (fixed notified value / retail price) instead of sale price.
+    /// Snapshotted from product profile, but may be overridden in the invoice UI.
+    /// </summary>
+    public bool FixedNotifiedApplicable { get; set; }
+
+    /// <summary>MRP used as tax base when <see cref="FixedNotifiedApplicable"/> is true.</summary>
+    public decimal MrpRateValue { get; set; }
+
     /// <summary>Snapshot from ProductProfile.HsCode at save time.</summary>
     public string HsCode { get; set; } = "";
 

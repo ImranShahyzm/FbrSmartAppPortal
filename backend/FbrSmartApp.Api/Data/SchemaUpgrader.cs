@@ -56,12 +56,145 @@ public static class SchemaUpgrader
             ct
         );
 
-        // Add CompanyId to ProductProfiles if missing
+        // ProductProfiles renamed to InventItems (keep dev upgrader idempotent).
+        // If a dev DB already exists with dbo.ProductProfiles, automatically rename it on first run.
         await db.Database.ExecuteSqlRawAsync(
             """
-            IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'CompanyId') IS NULL
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NULL AND OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL
             BEGIN
-                ALTER TABLE dbo.ProductProfiles ADD CompanyId INT NOT NULL CONSTRAINT DF_ProductProfiles_CompanyId DEFAULT (1);
+                EXEC sp_rename N'dbo.ProductProfiles', N'InventItems';
+            END
+
+            -- Ensure legacy ItemId exists (sequence-backed; SQL Server cannot add IDENTITY post-facto)
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL
+               AND COL_LENGTH(N'dbo.InventItems', N'ItemId') IS NULL
+            BEGIN
+                IF OBJECT_ID(N'dbo.InventItems_ItemId_Seq', N'SO') IS NULL
+                BEGIN
+                    CREATE SEQUENCE dbo.InventItems_ItemId_Seq
+                        AS INT
+                        START WITH 1
+                        INCREMENT BY 1;
+                END
+
+                ALTER TABLE dbo.InventItems
+                    ADD ItemId INT NOT NULL
+                        CONSTRAINT DF_InventItems_ItemId DEFAULT (NEXT VALUE FOR dbo.InventItems_ItemId_Seq);
+            END
+
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL
+               AND COL_LENGTH(N'dbo.InventItems', N'ItemId') IS NOT NULL
+               AND NOT EXISTS (
+                   SELECT 1 FROM sys.indexes
+                   WHERE name = N'UX_InventItems_ItemId'
+                     AND object_id = OBJECT_ID(N'dbo.InventItems'))
+            BEGIN
+                CREATE UNIQUE NONCLUSTERED INDEX UX_InventItems_ItemId ON dbo.InventItems(ItemId);
+            END
+
+            -- Legacy InventItems columns (nullable; no legacy FKs/constraints)
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL
+            BEGIN
+                IF COL_LENGTH(N'dbo.InventItems', N'CategoryID') IS NULL ALTER TABLE dbo.InventItems ADD CategoryID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemNumber') IS NULL ALTER TABLE dbo.InventItems ADD ItemNumber BIGINT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItenName') IS NULL ALTER TABLE dbo.InventItems ADD ItenName NVARCHAR(300) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'UOMId') IS NULL ALTER TABLE dbo.InventItems ADD UOMId INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemBrandId') IS NULL ALTER TABLE dbo.InventItems ADD ItemBrandId INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'MaintainInventory') IS NULL ALTER TABLE dbo.InventItems ADD MaintainInventory BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemPacking') IS NULL ALTER TABLE dbo.InventItems ADD ItemPacking INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemSalesPrice') IS NULL ALTER TABLE dbo.InventItems ADD ItemSalesPrice DECIMAL(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemPurchasePrice') IS NULL ALTER TABLE dbo.InventItems ADD ItemPurchasePrice DECIMAL(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemStatus') IS NULL ALTER TABLE dbo.InventItems ADD ItemStatus BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemPurchaseGL') IS NULL ALTER TABLE dbo.InventItems ADD ItemPurchaseGL INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemPurReturnGL') IS NULL ALTER TABLE dbo.InventItems ADD ItemPurReturnGL INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemSalesGL') IS NULL ALTER TABLE dbo.InventItems ADD ItemSalesGL INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemSaleReturnGL') IS NULL ALTER TABLE dbo.InventItems ADD ItemSaleReturnGL INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemImage') IS NULL ALTER TABLE dbo.InventItems ADD ItemImage NVARCHAR(MAX) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'CompanyID') IS NULL ALTER TABLE dbo.InventItems ADD CompanyID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'TaxGroupID') IS NULL ALTER TABLE dbo.InventItems ADD TaxGroupID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'WeightedRate') IS NULL ALTER TABLE dbo.InventItems ADD WeightedRate NUMERIC(14,5) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'WHID') IS NULL ALTER TABLE dbo.InventItems ADD WHID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemType') IS NULL ALTER TABLE dbo.InventItems ADD ItemType VARCHAR(10) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ManualNumber') IS NULL ALTER TABLE dbo.InventItems ADD ManualNumber NVARCHAR(50) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'CartonSize') IS NULL ALTER TABLE dbo.InventItems ADD CartonSize NUMERIC(10,5) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ProductWeightCode') IS NULL ALTER TABLE dbo.InventItems ADD ProductWeightCode INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'MainItem') IS NULL ALTER TABLE dbo.InventItems ADD MainItem BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Remarks') IS NULL ALTER TABLE dbo.InventItems ADD Remarks NVARCHAR(500) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemVarientId') IS NULL ALTER TABLE dbo.InventItems ADD ItemVarientId INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ColorID') IS NULL ALTER TABLE dbo.InventItems ADD ColorID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'UrduName') IS NULL ALTER TABLE dbo.InventItems ADD UrduName NVARCHAR(50) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'BardanaID') IS NULL ALTER TABLE dbo.InventItems ADD BardanaID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Make') IS NULL ALTER TABLE dbo.InventItems ADD Make NVARCHAR(50) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemModel') IS NULL ALTER TABLE dbo.InventItems ADD ItemModel NVARCHAR(50) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Range') IS NULL ALTER TABLE dbo.InventItems ADD Range NVARCHAR(50) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'SerialNo') IS NULL ALTER TABLE dbo.InventItems ADD SerialNo NVARCHAR(50) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Accessories') IS NULL ALTER TABLE dbo.InventItems ADD Accessories NVARCHAR(MAX) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Property') IS NULL ALTER TABLE dbo.InventItems ADD Property NVARCHAR(50) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'FixAsset') IS NULL ALTER TABLE dbo.InventItems ADD FixAsset BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'CompanyName') IS NULL ALTER TABLE dbo.InventItems ADD CompanyName INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Discount') IS NULL ALTER TABLE dbo.InventItems ADD Discount NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItenUrduName') IS NULL ALTER TABLE dbo.InventItems ADD ItenUrduName NVARCHAR(MAX) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemUrduName') IS NULL ALTER TABLE dbo.InventItems ADD ItemUrduName NVARCHAR(MAX) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'WholeSaleRate') IS NULL ALTER TABLE dbo.InventItems ADD WholeSaleRate NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ReOrderLevel') IS NULL ALTER TABLE dbo.InventItems ADD ReOrderLevel NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemGroupID') IS NULL ALTER TABLE dbo.InventItems ADD ItemGroupID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemMainGroupID') IS NULL ALTER TABLE dbo.InventItems ADD ItemMainGroupID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'SubCategoryID') IS NULL ALTER TABLE dbo.InventItems ADD SubCategoryID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'AttributeId') IS NULL ALTER TABLE dbo.InventItems ADD AttributeId INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'SeasonType') IS NULL ALTER TABLE dbo.InventItems ADD SeasonType INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'RegisterInevntoryDate') IS NULL ALTER TABLE dbo.InventItems ADD RegisterInevntoryDate DATETIME NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'isFinisH') IS NULL ALTER TABLE dbo.InventItems ADD isFinisH BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'IsBatchItem') IS NULL ALTER TABLE dbo.InventItems ADD IsBatchItem BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'CategoryCode') IS NULL ALTER TABLE dbo.InventItems ADD CategoryCode INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'SrNo') IS NULL ALTER TABLE dbo.InventItems ADD SrNo INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'DiscountOnSale') IS NULL ALTER TABLE dbo.InventItems ADD DiscountOnSale NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'UnitCalculation') IS NULL ALTER TABLE dbo.InventItems ADD UnitCalculation NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'PerPieceDiscont') IS NULL ALTER TABLE dbo.InventItems ADD PerPieceDiscont NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'LocationID') IS NULL ALTER TABLE dbo.InventItems ADD LocationID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ThreshHoldGram') IS NULL ALTER TABLE dbo.InventItems ADD ThreshHoldGram NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemNameEncrypted') IS NULL ALTER TABLE dbo.InventItems ADD ItemNameEncrypted NVARCHAR(MAX) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemPackingDec') IS NULL ALTER TABLE dbo.InventItems ADD ItemPackingDec NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ProductDeadLevel') IS NULL ALTER TABLE dbo.InventItems ADD ProductDeadLevel NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'EntryDate') IS NULL ALTER TABLE dbo.InventItems ADD EntryDate DATETIME NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'CurrentStock') IS NULL ALTER TABLE dbo.InventItems ADD CurrentStock NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'HSCode') IS NULL ALTER TABLE dbo.InventItems ADD HSCode NCHAR(9) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'SROCode') IS NULL ALTER TABLE dbo.InventItems ADD SROCode NCHAR(8) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'FilerTaxPercentage') IS NULL ALTER TABLE dbo.InventItems ADD FilerTaxPercentage NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'NonFilerTaxPercentage') IS NULL ALTER TABLE dbo.InventItems ADD NonFilerTaxPercentage NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Productionlevel') IS NULL ALTER TABLE dbo.InventItems ADD Productionlevel NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'PackingCharges') IS NULL ALTER TABLE dbo.InventItems ADD PackingCharges NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'MakingCost') IS NULL ALTER TABLE dbo.InventItems ADD MakingCost NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'PartyIDDs') IS NULL ALTER TABLE dbo.InventItems ADD PartyIDDs INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'IsQuatationItem') IS NULL ALTER TABLE dbo.InventItems ADD IsQuatationItem BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'IsServiceItem') IS NULL ALTER TABLE dbo.InventItems ADD IsServiceItem BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ShowCode') IS NULL ALTER TABLE dbo.InventItems ADD ShowCode BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'RelaxationQty') IS NULL ALTER TABLE dbo.InventItems ADD RelaxationQty NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'RelaxationOn') IS NULL ALTER TABLE dbo.InventItems ADD RelaxationOn NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'FactoryItems') IS NULL ALTER TABLE dbo.InventItems ADD FactoryItems INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'SentItems') IS NULL ALTER TABLE dbo.InventItems ADD SentItems INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'Length') IS NULL ALTER TABLE dbo.InventItems ADD Length NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'width') IS NULL ALTER TABLE dbo.InventItems ADD width NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ColorCount') IS NULL ALTER TABLE dbo.InventItems ADD ColorCount NVARCHAR(100) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'UsagePeriod') IS NULL ALTER TABLE dbo.InventItems ADD UsagePeriod NVARCHAR(100) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ProductPartyID') IS NULL ALTER TABLE dbo.InventItems ADD ProductPartyID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'AccountVoucherID') IS NULL ALTER TABLE dbo.InventItems ADD AccountVoucherID INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'IsCylinder') IS NULL ALTER TABLE dbo.InventItems ADD IsCylinder BIT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ProductStdWeightInGrams') IS NULL ALTER TABLE dbo.InventItems ADD ProductStdWeightInGrams NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'ItemConfigureType') IS NULL ALTER TABLE dbo.InventItems ADD ItemConfigureType INT NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'RateFactor') IS NULL ALTER TABLE dbo.InventItems ADD RateFactor NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'OdoMeterReading') IS NULL ALTER TABLE dbo.InventItems ADD OdoMeterReading NUMERIC(18,3) NULL;
+                IF COL_LENGTH(N'dbo.InventItems', N'PerKg') IS NULL ALTER TABLE dbo.InventItems ADD PerKg NUMERIC(18,3) NULL;
+            END
+
+            -- Backward compatibility: if the table was renamed, keep a view under the old name.
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL
+               AND OBJECT_ID('dbo.ProductProfiles', 'U') IS NULL
+               AND OBJECT_ID('dbo.ProductProfiles', 'V') IS NULL
+            BEGIN
+                EXEC(N'
+                    CREATE VIEW dbo.ProductProfiles AS
+                    SELECT * FROM dbo.InventItems;
+                ');
             END
             """,
             ct
@@ -69,10 +202,20 @@ public static class SchemaUpgrader
 
         await db.Database.ExecuteSqlRawAsync(
             """
-            IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'ProductImage') IS NULL
-            BEGIN
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL AND COL_LENGTH('dbo.InventItems', 'CompanyId') IS NULL
+                ALTER TABLE dbo.InventItems ADD CompanyId INT NOT NULL CONSTRAINT DF_InventItems_CompanyId DEFAULT (1);
+            ELSE IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'CompanyId') IS NULL
+                ALTER TABLE dbo.ProductProfiles ADD CompanyId INT NOT NULL CONSTRAINT DF_ProductProfiles_CompanyId DEFAULT (1);
+            """,
+            ct
+        );
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL AND COL_LENGTH('dbo.InventItems', 'ProductImage') IS NULL
+                ALTER TABLE dbo.InventItems ADD ProductImage NVARCHAR(400) NULL;
+            ELSE IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'ProductImage') IS NULL
                 ALTER TABLE dbo.ProductProfiles ADD ProductImage NVARCHAR(400) NULL;
-            END
             """,
             ct
         );
@@ -175,6 +318,7 @@ public static class SchemaUpgrader
                     CompanyId INT NOT NULL,
                     Reference NVARCHAR(50) NOT NULL,
                     CustomerPartyId INT NOT NULL,
+                    InvoiceDate DATE NOT NULL,
                     InvoiceDateUtc DATETIME2 NOT NULL,
                     PaymentTerms NVARCHAR(50) NOT NULL CONSTRAINT DF_FbrInvoices_PaymentTerms DEFAULT (N'immediate'),
                     Status NVARCHAR(30) NOT NULL CONSTRAINT DF_FbrInvoices_Status DEFAULT (N'ordered'),
@@ -193,6 +337,19 @@ public static class SchemaUpgrader
             END
             ELSE
             BEGIN
+                -- Important: SQL Server compiles the whole batch, so statements that reference
+                -- a not-yet-existing column can fail even when guarded by IF COL_LENGTH.
+                -- Use dynamic SQL to safely backfill + enforce NOT NULL after adding column.
+                IF COL_LENGTH('dbo.FbrInvoices', 'InvoiceDate') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.FbrInvoices ADD InvoiceDate DATE NULL;
+                    EXEC(N'
+                        UPDATE dbo.FbrInvoices
+                        SET InvoiceDate = CAST(InvoiceDateUtc AS DATE)
+                        WHERE InvoiceDate IS NULL;
+                    ');
+                    EXEC(N'ALTER TABLE dbo.FbrInvoices ALTER COLUMN InvoiceDate DATE NOT NULL;');
+                END
                 IF COL_LENGTH('dbo.FbrInvoices', 'CreatedByDisplayName') IS NULL
                     ALTER TABLE dbo.FbrInvoices ADD CreatedByDisplayName NVARCHAR(200) NULL;
                 IF COL_LENGTH('dbo.FbrInvoices', 'UpdatedByDisplayName') IS NULL
@@ -233,6 +390,8 @@ public static class SchemaUpgrader
                     UnitPrice DECIMAL(18,4) NOT NULL,
                     TaxRate DECIMAL(18,6) NOT NULL,
                     DiscountRate DECIMAL(18,6) NOT NULL CONSTRAINT DF_FbrInvoiceLines_DiscountRate DEFAULT ((0)),
+                    FixedNotifiedApplicable BIT NOT NULL CONSTRAINT DF_FbrInvoiceLines_FixedNotifiedApplicable DEFAULT ((0)),
+                    MrpRateValue DECIMAL(18,4) NOT NULL CONSTRAINT DF_FbrInvoiceLines_MrpRateValue DEFAULT ((0)),
                     HsCode NVARCHAR(50) NOT NULL CONSTRAINT DF_FbrInvoiceLines_HsCode DEFAULT (N''),
                     SroItemText NVARCHAR(500) NOT NULL CONSTRAINT DF_FbrInvoiceLines_SroItemText DEFAULT (N''),
                     Remarks NVARCHAR(500) NOT NULL CONSTRAINT DF_FbrInvoiceLines_Remarks DEFAULT (N''),
@@ -248,6 +407,12 @@ public static class SchemaUpgrader
                     ALTER TABLE dbo.FbrInvoiceLines ADD DiscountRate DECIMAL(18,6) NOT NULL
                         CONSTRAINT DF_FbrInvoiceLines_DiscountRate DEFAULT ((0));
                 END
+                IF COL_LENGTH('dbo.FbrInvoiceLines', 'FixedNotifiedApplicable') IS NULL
+                    ALTER TABLE dbo.FbrInvoiceLines ADD FixedNotifiedApplicable BIT NOT NULL
+                        CONSTRAINT DF_FbrInvoiceLines_FixedNotifiedApplicable DEFAULT ((0));
+                IF COL_LENGTH('dbo.FbrInvoiceLines', 'MrpRateValue') IS NULL
+                    ALTER TABLE dbo.FbrInvoiceLines ADD MrpRateValue DECIMAL(18,4) NOT NULL
+                        CONSTRAINT DF_FbrInvoiceLines_MrpRateValue DEFAULT ((0));
             END
             """,
             ct
@@ -420,10 +585,10 @@ public static class SchemaUpgrader
 
         await db.Database.ExecuteSqlRawAsync(
             """
-            IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'FbrUomId') IS NULL
-            BEGIN
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL AND COL_LENGTH('dbo.InventItems', 'FbrUomId') IS NULL
+                ALTER TABLE dbo.InventItems ADD FbrUomId INT NULL;
+            ELSE IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'FbrUomId') IS NULL
                 ALTER TABLE dbo.ProductProfiles ADD FbrUomId INT NULL;
-            END
             """,
             ct
         );
@@ -539,7 +704,9 @@ public static class SchemaUpgrader
 
         await db.Database.ExecuteSqlRawAsync(
             """
-            IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'FbrPdiTransTypeId') IS NULL
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL AND COL_LENGTH('dbo.InventItems', 'FbrPdiTransTypeId') IS NULL
+                ALTER TABLE dbo.InventItems ADD FbrPdiTransTypeId INT NULL;
+            ELSE IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL AND COL_LENGTH('dbo.ProductProfiles', 'FbrPdiTransTypeId') IS NULL
                 ALTER TABLE dbo.ProductProfiles ADD FbrPdiTransTypeId INT NULL;
             """,
             ct
@@ -547,7 +714,23 @@ public static class SchemaUpgrader
 
         await db.Database.ExecuteSqlRawAsync(
             """
-            IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL
+            IF OBJECT_ID('dbo.InventItems', 'U') IS NOT NULL
+            BEGIN
+                IF COL_LENGTH('dbo.InventItems', 'FbrProductType') IS NULL
+                    ALTER TABLE dbo.InventItems ADD FbrProductType NVARCHAR(64) NULL;
+                IF COL_LENGTH('dbo.InventItems', 'PurchasePrice') IS NULL
+                    ALTER TABLE dbo.InventItems ADD PurchasePrice DECIMAL(18,4) NULL;
+                IF COL_LENGTH('dbo.InventItems', 'SroScheduleNoText') IS NULL
+                    ALTER TABLE dbo.InventItems ADD SroScheduleNoText NVARCHAR(500) NULL;
+                IF COL_LENGTH('dbo.InventItems', 'SroItemRefText') IS NULL
+                    ALTER TABLE dbo.InventItems ADD SroItemRefText NVARCHAR(500) NULL;
+                IF COL_LENGTH('dbo.InventItems', 'FixedNotifiedApplicable') IS NULL
+                    ALTER TABLE dbo.InventItems ADD FixedNotifiedApplicable BIT NOT NULL
+                        CONSTRAINT DF_InventItems_FixedNotifiedApplicable DEFAULT ((0));
+                IF COL_LENGTH('dbo.InventItems', 'MrpRateValue') IS NULL
+                    ALTER TABLE dbo.InventItems ADD MrpRateValue DECIMAL(18,4) NULL;
+            END
+            ELSE IF OBJECT_ID('dbo.ProductProfiles', 'U') IS NOT NULL
             BEGIN
                 IF COL_LENGTH('dbo.ProductProfiles', 'FbrProductType') IS NULL
                     ALTER TABLE dbo.ProductProfiles ADD FbrProductType NVARCHAR(64) NULL;
@@ -557,6 +740,11 @@ public static class SchemaUpgrader
                     ALTER TABLE dbo.ProductProfiles ADD SroScheduleNoText NVARCHAR(500) NULL;
                 IF COL_LENGTH('dbo.ProductProfiles', 'SroItemRefText') IS NULL
                     ALTER TABLE dbo.ProductProfiles ADD SroItemRefText NVARCHAR(500) NULL;
+                IF COL_LENGTH('dbo.ProductProfiles', 'FixedNotifiedApplicable') IS NULL
+                    ALTER TABLE dbo.ProductProfiles ADD FixedNotifiedApplicable BIT NOT NULL
+                        CONSTRAINT DF_ProductProfiles_FixedNotifiedApplicable DEFAULT ((0));
+                IF COL_LENGTH('dbo.ProductProfiles', 'MrpRateValue') IS NULL
+                    ALTER TABLE dbo.ProductProfiles ADD MrpRateValue DECIMAL(18,4) NULL;
             END
             """,
             ct
@@ -702,6 +890,23 @@ public static class SchemaUpgrader
             IF OBJECT_ID('dbo.FbrInvoices', 'U') IS NOT NULL
                 AND COL_LENGTH('dbo.FbrInvoices', 'InvoiceNumber') IS NOT NULL
                 ALTER TABLE dbo.FbrInvoices ALTER COLUMN InvoiceNumber NVARCHAR(32) NULL;
+            """,
+            ct
+        );
+
+        // Enforce uniqueness of system invoice number within a company (but allow reuse across companies).
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.FbrInvoices', 'U') IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sys.indexes
+                  WHERE name = N'UX_FbrInvoices_Company_InvoiceNumber'
+                    AND object_id = OBJECT_ID(N'dbo.FbrInvoices'))
+            BEGIN
+                CREATE UNIQUE NONCLUSTERED INDEX UX_FbrInvoices_Company_InvoiceNumber
+                ON dbo.FbrInvoices(CompanyId, InvoiceNumber)
+                WHERE InvoiceNumber IS NOT NULL AND InvoiceNumber <> N'';
+            END
             """,
             ct
         );
@@ -1036,6 +1241,31 @@ public static class SchemaUpgrader
             IF OBJECT_ID('dbo.GLChartOFAccount', 'U') IS NOT NULL
                 AND COL_LENGTH('dbo.GLChartOFAccount', 'ChartAccountGroupKey') IS NULL
                 ALTER TABLE dbo.GLChartOFAccount ADD ChartAccountGroupKey NVARCHAR(36) NULL;
+            """,
+            ct
+        );
+
+        // Account groups (hierarchical, range-based)
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.GlAccountGroups', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.GlAccountGroups(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_GlAccountGroups PRIMARY KEY,
+                    CompanyId INT NOT NULL,
+                    GroupName NVARCHAR(200) NOT NULL,
+                    FromCode BIGINT NOT NULL,
+                    ToCode BIGINT NOT NULL,
+                    ParentGroupId INT NULL,
+                    ColorHex NVARCHAR(7) NOT NULL,
+                    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_GlAccountGroups_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    UpdatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_GlAccountGroups_UpdatedAtUtc DEFAULT (SYSUTCDATETIME()),
+                    CONSTRAINT FK_GlAccountGroups_Parent FOREIGN KEY (ParentGroupId) REFERENCES dbo.GlAccountGroups(Id),
+                    CONSTRAINT FK_GlAccountGroups_Company FOREIGN KEY (CompanyId) REFERENCES dbo.GLCompany(Companyid)
+                );
+                CREATE INDEX IX_GlAccountGroups_Company_Parent_Range ON dbo.GlAccountGroups(CompanyId, ParentGroupId, FromCode, ToCode);
+                CREATE UNIQUE INDEX UX_GlAccountGroups_Company_Parent_RangeExact ON dbo.GlAccountGroups(CompanyId, ParentGroupId, FromCode, ToCode);
+            END
             """,
             ct
         );
@@ -1656,6 +1886,44 @@ public static class SchemaUpgrader
                     CONSTRAINT FK_gen_CheckBookCancelledSerial_CheckBook
                         FOREIGN KEY (CheckBookID) REFERENCES dbo.gen_CheckBookInfo(CheckBookID) ON DELETE CASCADE
                 );
+            END
+            """,
+            ct
+        );
+
+        // Phase tags (reusable colored tags across the app)
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_Pes_PhaseTags', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_Pes_PhaseTags(
+                    PhaseTagID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_Pes_PhaseTags PRIMARY KEY,
+                    TagName NVARCHAR(200) NOT NULL,
+                    CompanyID INT NULL,
+                    EntryUserID INT NULL,
+                    EntryUserDateTime DATETIME NULL,
+                    TagColor NVARCHAR(20) NULL
+                );
+            END
+            """,
+            ct
+        );
+
+        // Generic tag links (resource + record id) so tags can be reused across modules.
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID('dbo.gen_Pes_PhaseTagLinks', 'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.gen_Pes_PhaseTagLinks(
+                    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_gen_Pes_PhaseTagLinks PRIMARY KEY,
+                    CompanyID INT NOT NULL,
+                    ResourceKey NVARCHAR(64) NOT NULL,
+                    RecordId INT NOT NULL,
+                    PhaseTagID INT NOT NULL,
+                    CONSTRAINT FK_gen_Pes_PhaseTagLinks_Tag FOREIGN KEY (PhaseTagID) REFERENCES dbo.gen_Pes_PhaseTags(PhaseTagID)
+                );
+                CREATE INDEX IX_gen_Pes_PhaseTagLinks_Target ON dbo.gen_Pes_PhaseTagLinks(CompanyID, ResourceKey, RecordId);
+                CREATE UNIQUE INDEX UX_gen_Pes_PhaseTagLinks_Unique ON dbo.gen_Pes_PhaseTagLinks(CompanyID, ResourceKey, RecordId, PhaseTagID);
             END
             """,
             ct

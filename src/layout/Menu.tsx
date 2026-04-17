@@ -159,30 +159,64 @@ const Menu = ({ dense = false }: MenuProps) => {
             ) : (
                 // FBR SMART / DEFAULT APP MENU
                 <>
-                    <MenuItemLink
-                        to="/fbrInvoices"
-                        primaryText="Invoices"
-                        leftIcon={<fbrInvoices.icon />}
-                        dense={dense}
-                    />
-                    <MenuItemLink
-                        to="/customers"
-                        primaryText="Customers"
-                        leftIcon={<visitors.icon />}
-                        dense={dense}
-                    />
-                    <SubMenu
-                        handleToggle={() => handleToggle('menuCatalog')}
-                        isOpen={state.menuCatalog}
-                        name="pos.menu.catalog"
-                        icon={<Inventory2Icon />}
-                        dense={dense}
-                    >
-                        <MenuItemLink to="/productProfiles" primaryText="Product Registration" leftIcon={<Inventory2Icon />} dense={dense} />
-                        <MenuItemLink to="/fbrSalesTaxRates" primaryText="Tax Rates" leftIcon={<PercentIcon />} dense={dense} />
-                        <MenuItemLink to="/companies" primaryText="Companies" leftIcon={<BusinessIcon />} dense={dense} />
-                        <MenuItemLink to="/fbrScenarios" primaryText="FBR Scenarios" leftIcon={<GavelIcon />} dense={dense} />
-                    </SubMenu>
+            <MenuItemLink
+                to="/fbrInvoices"
+                state={{ _scrollToTop: true }}
+                primaryText={translate(`resources.fbrInvoices.name`, {
+                    smart_count: 2,
+                })}
+                leftIcon={<fbrInvoices.icon />}
+                dense={dense}
+            />
+            <MenuItemLink
+                to="/customers"
+                state={{ _scrollToTop: true }}
+                primaryText={translate(`resources.customers.name`, {
+                    smart_count: 2,
+                })}
+                leftIcon={<visitors.icon />}
+                dense={dense}
+            />
+            <SubMenu
+                handleToggle={() => handleToggle('menuCatalog')}
+                isOpen={state.menuCatalog}
+                name="pos.menu.catalog"
+                icon={<Inventory2Icon />}
+                dense={dense}
+            >
+                <MenuItemLink
+                    to="/productProfiles"
+                    state={{ _scrollToTop: true }}
+                    primaryText="Products"
+                    leftIcon={<Inventory2Icon />}
+                    dense={dense}
+                />
+                <MenuItemLink
+                    to="/fbrSalesTaxRates"
+                    state={{ _scrollToTop: true }}
+                    primaryText={translate(`resources.fbrSalesTaxRates.name`, {
+                        smart_count: 2,
+                    })}
+                    leftIcon={<PercentIcon />}
+                    dense={dense}
+                />
+                <MenuItemLink
+                    to="/companies"
+                    state={{ _scrollToTop: true }}
+                    primaryText={translate(`resources.companies.name`, {
+                        smart_count: 1,
+                    })}
+                    leftIcon={<BusinessIcon />}
+                    dense={dense}
+                />
+                <MenuItemLink
+                    to="/fbrScenarios"
+                    state={{ _scrollToTop: true }}
+                    primaryText="FBR Scenarios"
+                    leftIcon={<GavelIcon />}
+                    dense={dense}
+                />
+            </SubMenu>
                 </>
             )}
         </Box>

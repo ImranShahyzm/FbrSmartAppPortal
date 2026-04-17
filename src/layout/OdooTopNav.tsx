@@ -290,7 +290,7 @@ function FbrSmartTopNav(props: { workspaceRoot: string }) {
             <NavDropdown
                 label={translate('pos.menu.catalog', { _: 'Catalog' })}
                 items={[
-                    { to: p('/productProfiles'), label: 'Product Registration' },
+                    { to: p('/productProfiles'), label: 'Products' },
                     {
                         to: p('/fbrSalesTaxRates'),
                         label: translate('resources.fbrSalesTaxRates.name', {
@@ -555,13 +555,15 @@ function ConfigurationAccountingDropdown(props: { workspaceRoot: string }) {
     const translate = useTranslate();
     const canReadCoa = useAccountingAccess('glChartAccounts', 'read');
     const canReadVouchers = useAccountingAccess('glVoucherTypes', 'read');
+    const canReadAccountGroups = useAccountingAccess('glAccountGroups', 'read');
     const canReadBankInfo = useAccountingAccess('genBankInformation', 'read');
     const canReadCashInfo = useAccountingAccess('genCashInformation', 'read');
     const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
     const open = Boolean(anchor);
     const coaPath = pathInWorkspace(props.workspaceRoot, '/glChartAccounts');
     const voucherTypesPath = pathInWorkspace(props.workspaceRoot, '/glVoucherTypes');
-const bankInfoPath = pathInWorkspace(props.workspaceRoot, '/genBankInformation');
+    const accountGroupsPath = pathInWorkspace(props.workspaceRoot, '/glAccountGroups');
+    const bankInfoPath = pathInWorkspace(props.workspaceRoot, '/genBankInformation');
     const cashInfoPath = pathInWorkspace(props.workspaceRoot, '/genCashInformation');
 
     return (
@@ -627,6 +629,16 @@ const bankInfoPath = pathInWorkspace(props.workspaceRoot, '/genBankInformation')
                         </span>
                     </Tooltip>
                 )}
+                {canReadAccountGroups ? (
+                    <MenuItem
+                        component={Link}
+                        to={accountGroupsPath}
+                        onClick={() => setAnchor(null)}
+                        sx={{ pl: 3.5, py: 1, fontSize: 13 }}
+                    >
+                        {translate('shell.accounting.account_groups', { _: 'Account groups' })}
+                    </MenuItem>
+                ) : null}
                 {canReadBankInfo ? (
                     <MenuItem
                         component={Link}

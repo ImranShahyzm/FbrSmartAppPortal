@@ -76,6 +76,28 @@ const FBR_INVOICE_GROUP_BY_STORE_KEY = 'fbrInvoices.groupBy';
 
 export type FbrInvoiceGroupByMode = 'none' | 'customerPartyId' | 'invoiceDateDay';
 
+function formatDateOnlyDisplay(value: unknown): string {
+    if (typeof value === 'string') {
+        const s = value.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        if (s.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    }
+    const d = utcInstantToLocalDateTransform(value);
+    return d ? d.toLocaleDateString() : '—';
+}
+
+function dateOnlySortKey(value: unknown): number {
+    if (typeof value === 'string') {
+        const s = value.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+            const [y, m, d] = s.split('-').map(Number);
+            const dt = new Date(y, (m || 1) - 1, d || 1);
+            return Number.isNaN(dt.getTime()) ? 0 : dt.getTime();
+        }
+    }
+    return utcInstantToLocalDateTransform(value)?.getTime() ?? 0;
+}
+
 const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
     { value: '', label: 'All' },
     { value: 'ordered', label: 'Draft' },
@@ -313,7 +335,8 @@ function OdooListActions() {
                 p: 0,
                 minHeight: 'unset',
                 flexDirection: 'column',
-                pt: { xs: '4px', md: '12px' },
+                // Keep spacing consistent with Dashboard (AppShell already provides a tiny gap under nav).
+                pt: 0,
             }}
         >
             <Box
@@ -897,7 +920,7 @@ function FbrGroupedDataTable() {
                 else map.set(uniqueKey, { displayLabel, rows: [r] });
             } else {
                 const uniqueKey =
-                    utcInstantToLocalDateTransform(r.invoiceDate)?.toLocaleDateString() ?? '—';
+                    formatDateOnlyDisplay(r.invoiceDate);
                 const prev = map.get(uniqueKey);
                 if (prev) prev.rows.push(r);
                 else map.set(uniqueKey, { displayLabel: uniqueKey, rows: [r] });
@@ -906,8 +929,8 @@ function FbrGroupedDataTable() {
 
         map.forEach(v => {
             v.rows.sort((a: any, b: any) => {
-                const ta = utcInstantToLocalDateTransform(a.invoiceDate)?.getTime() ?? 0;
-                const tb = utcInstantToLocalDateTransform(b.invoiceDate)?.getTime() ?? 0;
+                const ta = dateOnlySortKey(a.invoiceDate);
+                const tb = dateOnlySortKey(b.invoiceDate);
                 return tb - ta;
             });
         });
@@ -1050,16 +1073,14 @@ function FbrGroupedDataTable() {
                                               }}
                                           >
                                               <TableCell />
-                                              <TableCell>{r.reference ?? ''}</TableCell>
+                                              <TableCell>{r.invoiceNumber ?? ''}</TableCell>
                                               <TableCell>
                                                   {utcInstantToLocalDateTransform(
                                                       r.createdAtUtc
                                                   )?.toLocaleString() ?? ''}
                                               </TableCell>
                                               <TableCell>
-                                                  {utcInstantToLocalDateTransform(
-                                                      r.invoiceDate
-                                                  )?.toLocaleDateString() ?? ''}
+                                                  {formatDateOnlyDisplay(r.invoiceDate)}
                                               </TableCell>
                                               <TableCell>
                                                   {r.customerName ?? r.customerPartyId ?? ''}
@@ -1104,7 +1125,13 @@ const Title = () => {
 
 const FBR_INVOICE_RESOURCE = 'fbrInvoices';
 
-type FbrInvoiceListRow = { id?: Identifier; status?: string; isLocked?: boolean; reference?: string };
+type FbrInvoiceListRow = {
+    id?: Identifier;
+    status?: string;
+    isLocked?: boolean;
+    invoiceNumber?: string;
+    reference?: string;
+};
 
 function fbrInvoiceListRowsById(data: unknown): Map<string, FbrInvoiceListRow> {
     const m = new Map<string, FbrInvoiceListRow>();
@@ -1294,7 +1321,7 @@ export default function FbrInvoiceList() {
                             'fbrScenarioId',
                         ]}
                     >
-                        <Column source="reference" label="Invoice Number" />
+                        <Column source="invoiceNumber" label="Invoice Number" />
                         <Column source="createdAtUtc" label="Creation Date">
                             <DateField
                                 source="createdAtUtc"
@@ -1318,6 +1345,7 @@ export default function FbrInvoiceList() {
                         <ColumnNumber source="total" label="Total Amount" options={amountOptions} />
 
                         {/* Extra columns available via Columns button */}
+                        <Column source="reference" label="Reference" />
                         <Column source="customerPartyId" label="Customer ID" />
                         <Column source="customerAddress" label="Address" disableSort />
                         <Column source="customerNtn" label="Customer NTN" disableSort />
@@ -1380,14 +1408,15 @@ function InvoiceKanban() {
                                 </Box>
                                 <Box sx={{ minWidth: 0 }}>
                                     <Typography variant="body2" fontWeight={700} noWrap>{displayName}</Typography>
-                                    <Typography variant="caption" color="text.secondary" noWrap>{r.reference}</Typography>
+                                    <Typography variant="caption" color="text.secondary" noWrap>
+                                        {r.invoiceNumber || r.reference || ''}
+                                    </Typography>
                                 </Box>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
                                 <Typography variant="caption" color="text.secondary">
                                     {r.invoiceDate
-                                        ? (utcInstantToLocalDateTransform(r.invoiceDate)?.toLocaleDateString() ??
-                                          '')
+                                        ? formatDateOnlyDisplay(r.invoiceDate)
                                         : ''}
                                 </Typography>
                                 <Typography variant="body2" fontWeight={700}>{(Number(r.total) || 0).toLocaleString(undefined, amountOptions)}</Typography>

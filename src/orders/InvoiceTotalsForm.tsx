@@ -10,6 +10,9 @@ type Line = {
     unitPrice?: number;
     quantity?: number;
     taxRate?: number;
+    fixedNotifiedApplicable?: boolean;
+    mrpRateValue?: number;
+    discountRate?: number;
 };
 
 export function InvoiceTotalsForm() {
@@ -42,10 +45,18 @@ export function InvoiceTotalsForm() {
         let ex = 0;
         let tx = 0;
         for (const line of lines) {
-            const net =
-                (Number(line?.unitPrice) || 0) * (Number(line?.quantity) || 0);
+            const qty = Number(line?.quantity) || 0;
+            const unitPrice = Number(line?.unitPrice) || 0;
+            const disc = Math.max(0, Math.min(100, Number(line?.discountRate) || 0));
+            const net = qty * unitPrice * (1 - disc / 100);
             ex += net;
-            tx += net * (Number(line?.taxRate) || 0);
+            const taxRate = Number(line?.taxRate) || 0;
+            const fixed = Boolean(line?.fixedNotifiedApplicable);
+            const mrp = Number(line?.mrpRateValue) || 0;
+            // Must match invoice line grid + backend totals:
+            // if FN applies: tax base = (MRP * Qty); else tax base = net
+            const taxBase = fixed && mrp > 0 ? qty * mrp : net;
+            tx += taxBase * taxRate;
         }
         return { total_ex_taxes: ex, taxes: tx };
     }, [lines]);
