@@ -1,16 +1,52 @@
-import * as React from 'react';
-import { Edit, SimpleForm } from 'react-admin';
-import { Box, Divider, Typography } from '@mui/material';
+import { Edit, PrevNextButtons, SimpleForm, useRecordContext } from 'react-admin';
+import { Box } from '@mui/material';
+
 import { SalesServiceInformationFormFields } from './SalesServiceInfoFormFields';
-import { SalesServiceInformationFormToolbar } from './SalesServiceInfoFormToolbar';
-import { FormSaveBridge, FORM_SAVE_CUSTOMER } from '../../common/formToolbar';
+import {
+    FormDocumentWorkflowBar,
+    FormSaveBridge,
+    FORM_SAVE_SALES_SERVICE_INFO,
+} from '../../common/formToolbar';
 import { OdooSplitFormLayout } from '../../common/layout/OdooSplitFormLayout';
+
+function SalesServiceEditHeader() {
+    const record = useRecordContext<{ name?: string; id?: string | number }>();
+    const name = String(record?.name ?? '').trim();
+    const displayTitle = name || `#${record?.id ?? ''}`;
+
+    return (
+        <FormDocumentWorkflowBar
+            title={
+                <>
+                    Sales Service Info
+                    {displayTitle ? (
+                        <Box component="span" sx={{ ml: 0.75, fontWeight: 700 }}>
+                            {displayTitle}
+                        </Box>
+                    ) : null}
+                </>
+            }
+            subtitle="All changes are saved on the server."
+            sx={{ mb: 1, py: '4px' }}
+            navigationActions={
+                <PrevNextButtons resource="salesServiceInfo" sort={{ field: 'id', order: 'DESC' }} />
+            }
+            saveEventName={FORM_SAVE_SALES_SERVICE_INFO}
+            resource="salesServiceInfo"
+            listPath="/salesServiceInfo"
+            showDelete
+            deleteConfirmMessage="Delete this sales service information?"
+            deleteSuccessMessage="Sales service information deleted"
+        />
+    );
+}
 
 export default function SalesServiceInformationEdit() {
     return (
         <Edit
             title="Sales Service Info"
             mutationMode="pessimistic"
+            actions={false}
             sx={{
                 width: '100%',
                 maxWidth: '100%',
@@ -23,45 +59,11 @@ export default function SalesServiceInformationEdit() {
             }}
         >
             <SimpleForm sx={{ maxWidth: 'none', width: '100%' }} toolbar={false}>
-                <FormSaveBridge eventName={FORM_SAVE_CUSTOMER} />
+                <FormSaveBridge eventName={FORM_SAVE_SALES_SERVICE_INFO} />
+                <SalesServiceEditHeader />
 
-                {/* Sticky Header - Exact same style as CustomerCreate */}
-                <Box
-                    sx={{
-                        position: { md: 'sticky' },
-                        top: { md: 0 },
-                        zIndex: 5,
-                        bgcolor: 'background.paper',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        px: 2,
-                        py: '6px',
-                        mb: 1.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 2,
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ fontSize: '0.85rem' }}>
-                            Sales Service Info
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.72rem' }}>
-                            All changes are saved on the server.
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-                        <SalesServiceInformationFormToolbar showDelete />
-                    </Box>
-                </Box>
-
-                {/* Split Form Layout - Same as Customer */}
                 <OdooSplitFormLayout>
-                    <SalesServiceInformationFormFields />
+                    <SalesServiceInformationFormFields variant="edit" />
                 </OdooSplitFormLayout>
             </SimpleForm>
         </Edit>

@@ -27,6 +27,7 @@ import { useResolvedActiveAppId } from '../apps/useResolvedActiveAppId';
 import {
     ACCOUNTING_SUITE_APP_ID,
     APPS_REGISTRY,
+    AUTO_DEALERS_APP_ID,
     SETTINGS_APP_ID,
 } from '../apps/appsRegistry';
 import { SETTINGS_RECORD_RULE_FIELD_SETTINGS_PATH } from '../apps/workspacePaths';
@@ -43,7 +44,8 @@ const CustomAppBar = () => {
     const canRecordRuleFieldSetup = useCanAccess(SETTINGS_APP_ID, 'securityGroups', 'write');
     const translate = useTranslate();
     const inAccountingWorkspace = activeAppId === ACCOUNTING_SUITE_APP_ID;
-    const hideTitlePortal = inAccountingWorkspace || activeAppId === SETTINGS_APP_ID;
+    const hideTitlePortal =
+        inAccountingWorkspace || activeAppId === SETTINGS_APP_ID || activeAppId === AUTO_DEALERS_APP_ID;
     const workspaceAppLabel = React.useMemo(() => {
         const entry = APPS_REGISTRY.find(a => a.id === activeAppId);
         return entry?.name ?? null;

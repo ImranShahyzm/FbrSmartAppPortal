@@ -44,9 +44,14 @@ export const autoDealerDataProvider: DataProvider = {
     },
 
     create: async (resource, params) => {
+        const payload =
+            resource === 'salesServiceInfo'
+                ? sanitizeSalesServiceCreateBody(params.data as Record<string, unknown>)
+                : params.data;
+
         const { json } = await httpClient(`${apiUrl}/${resource}`, {
             method: 'POST',
-            body: JSON.stringify(params.data),
+            body: JSON.stringify(payload),
         });
 
         const record = json?.data ?? json;
@@ -118,6 +123,15 @@ export const autoDealerDataProvider: DataProvider = {
         throw new Error('Function not implemented.');
     }
 };
+
+/** POST must not send saleServiceInfoID: null — API expects int or omitted (identity). */
+function sanitizeSalesServiceCreateBody(data: Record<string, unknown>): Record<string, unknown> {
+    const out = { ...data };
+    if (out.saleServiceInfoID == null || out.saleServiceInfoID === '') {
+        delete out.saleServiceInfoID;
+    }
+    return out;
+}
 
 // ==================== PRIMARY KEY MAPPING ====================
 function getPrimaryKey(resource: string): string {

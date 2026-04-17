@@ -1,15 +1,47 @@
-import { DataProvider, DeleteManyParams, DeleteManyResult, fetchUtils, GetManyReferenceParams, GetManyReferenceResult, QueryFunctionContext, RaRecord, UpdateManyParams, UpdateManyResult } from 'react-admin';
+import {
+    DataProvider,
+    DeleteManyParams,
+    DeleteManyResult,
+    fetchUtils,
+    GetListParams,
+    GetManyReferenceParams,
+    GetManyReferenceResult,
+    QueryFunctionContext,
+    RaRecord,
+    UpdateManyParams,
+    UpdateManyResult,
+} from 'react-admin';
 
 const apiUrl = 'http://localhost:5227/api';
 const httpClient = fetchUtils.fetchJson;
 
+/** Maps react-admin resource name to ASP.NET route segment. */
+function apiResourcePath(resource: string): string {
+    if (resource === 'vehicleGroupInfo') return 'VehicleGroup';
+    return resource;
+}
+
+function buildListQuery(params: GetListParams): string {
+    const { page = 1, perPage = 25 } = params.pagination ?? {};
+    const skip = (page - 1) * perPage;
+    const take = perPage;
+    const filter = (params.filter ?? {}) as Record<string, unknown>;
+    const q = typeof filter.q === 'string' ? filter.q.trim() : '';
+    const parts: string[] = [`range=${encodeURIComponent(`[${skip},${skip + take - 1}]`)}`];
+    if (q) parts.push(`q=${encodeURIComponent(q)}`);
+    const sort = params.sort;
+    if (sort?.field) {
+        parts.push(`sort=${encodeURIComponent(sort.field)}`);
+        parts.push(`order=${encodeURIComponent((sort.order ?? 'ASC').toLowerCase())}`);
+    }
+    return parts.join('&');
+}
+
 export const autoDealerDataProvider: DataProvider = {
     getList: async (resource, params) => {
-        const { page, perPage } = params.pagination ?? { page: 1, perPage: 10 };
-        const skip = (page - 1) * perPage;
-        const take = perPage;
-
-        const url = `${apiUrl}/${resource}?range=[${skip},${skip + take - 1}]`;
+        const path = apiResourcePath(resource);
+        const query = buildListQuery(params);
+        const url = `${apiUrl}/${path}?${query}`;
 
         const { headers, json } = await httpClient(url);
         const contentRange = headers.get('Content-Range') ?? '';
@@ -25,7 +57,8 @@ export const autoDealerDataProvider: DataProvider = {
     },
 
     getOne: async (resource, params) => {
-        const { json } = await httpClient(`${apiUrl}/${resource}/${params.id}`);
+        const path = apiResourcePath(resource);
+        const { json } = await httpClient(`${apiUrl}/${path}/${params.id}`);
         const record = json?.data ?? json;
         return {
             data: {
@@ -35,9 +68,15 @@ export const autoDealerDataProvider: DataProvider = {
         };
     },
 create: async (resource, params) => {
-    const { json } = await httpClient(`${apiUrl}/${resource}`, {
+    const path = apiResourcePath(resource);
+    const payload =
+        resource === 'salesServiceInfo'
+            ? sanitizeSalesServiceCreateBody(params.data as Record<string, unknown>)
+            : params.data;
+
+    const { json } = await httpClient(`${apiUrl}/${path}`, {
         method: 'POST',
-        body: JSON.stringify(params.data),
+        body: JSON.stringify(payload),
     });
 
     // Unwrap the response from your controller
@@ -48,7 +87,15 @@ create: async (resource, params) => {
     let newId = record[primaryKey];
 
     // Extra fallback in case the key name varies
-    if (!newId) newId = record.colorID || record.id;
+    if (!newId) {
+        newId =
+            record.colorID ||
+            record.saleServiceInfoID ||
+            record.SaleServiceInfoID ||
+            record.vehicleGroupID ||
+            record.VehicleGroupID ||
+            record.id;
+    }
 
     if (!newId) {
         console.error('❌ Create response structure:', json);
@@ -66,7 +113,8 @@ create: async (resource, params) => {
 },
 
     update: async (resource, params) => {
-        const { json } = await httpClient(`${apiUrl}/${resource}/${params.id}`, {
+        const path = apiResourcePath(resource);
+        const { json } = await httpClient(`${apiUrl}/${path}/${params.id}`, {
             method: 'PUT',
             body: JSON.stringify(params.data),
         });
@@ -82,8 +130,9 @@ create: async (resource, params) => {
 
     // ... keep your other methods (getMany, delete, etc.) as they are
     getMany: async (resource, params) => {
+        const path = apiResourcePath(resource);
         const results = await Promise.all(
-            params.ids.map(id => httpClient(`${apiUrl}/${resource}/${id}`).then(({ json }) => {
+            params.ids.map(id => httpClient(`${apiUrl}/${path}/${id}`).then(({ json }) => {
                 const record = json?.data ?? json;
                 return {
                     ...record,
@@ -96,7 +145,8 @@ create: async (resource, params) => {
     },
 
     delete: async (resource, params) => {
-        await httpClient(`${apiUrl}/${resource}/${params.id}`, { method: 'DELETE' });
+        const path = apiResourcePath(resource);
+        await httpClient(`${apiUrl}/${path}/${params.id}`, { method: 'DELETE' });
         return { data: { id: params.id } as any };
     },
     getManyReference: function <RecordType extends RaRecord = any>(resource: string, params: GetManyReferenceParams & QueryFunctionContext): Promise<GetManyReferenceResult<RecordType>> {
@@ -110,13 +160,22 @@ create: async (resource, params) => {
     }
 };
 
+function sanitizeSalesServiceCreateBody(data: Record<string, unknown>): Record<string, unknown> {
+    const out = { ...data };
+    if (out.saleServiceInfoID == null || out.saleServiceInfoID === '') {
+        delete out.saleServiceInfoID;
+    }
+    return out;
+}
+
 function getPrimaryKey(resource: string): string {
     const map: Record<string, string> = {
-        colorInformation: 'colorID',      // ← Changed to match your C# model
+        colorInformation: 'colorID',
+        salesServiceInfo: 'saleServiceInfoID',
+        vehicleGroupInfo: 'vehicleGroupID',
         VehicleInfo: 'vehicleID',
         BankInformation: 'bankInfoID',
         VariantInfo: 'varientID',
-        // add more resources here as needed
     };
     return map[resource] ?? 'id';
 }

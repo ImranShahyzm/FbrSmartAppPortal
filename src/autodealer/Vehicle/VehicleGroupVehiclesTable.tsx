@@ -17,7 +17,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 
 import {
-    EXCEL_GRID_ROW_INPUT_MIN_HEIGHT,
     excelGridBodyCellSx,
     excelGridDragHandleCellSx,
     excelGridDragHandleIconWrapperSx,
@@ -57,8 +56,7 @@ export function VehicleGroupVehiclesTable() {
     };
 
     return (
-        <Box sx={{ width: '100%' }}>   {/* Removed p:1 for maximum width */}
-            {/* Add Button - Same style as Security Group */}
+        <Box sx={{ width: '100%' }}>
             <Box
                 role="button"
                 tabIndex={0}
@@ -86,71 +84,70 @@ export function VehicleGroupVehiclesTable() {
                 Add Vehicle
             </Box>
 
-            {/* Full Width Table - Matching Security Group exactly */}
             <TableContainer sx={excelGridTableContainerSx}>
-                <Table 
-                    size="small" 
-                    stickyHeader 
+                <Table
+                    size="small"
+                    stickyHeader
                     sx={{
                         ...excelGridTableSx,
-                        width: '100%',           // Force full width
+                        width: '100%',
                         minWidth: '100%',
                     }}
                 >
                     <TableHead>
                         <TableRow>
-                            <TableCell 
-                                width={32} 
-                                sx={{ 
-                                    ...excelGridBodyCellSx, 
+                            <TableCell
+                                width={32}
+                                sx={{
+                                    ...excelGridBodyCellSx,
                                     bgcolor: 'background.paper',
-                                    borderTopLeftRadius: '4px'
-                                }} 
+                                    borderTopLeftRadius: '4px',
+                                }}
                             />
-                            <TableCell 
-                                sx={{ 
-                                    ...excelGridBodyCellSx, 
-                                    fontWeight: 600, 
-                                    minWidth: 160, 
-                                    bgcolor: 'background.paper' 
+                            <TableCell
+                                sx={{
+                                    ...excelGridBodyCellSx,
+                                    fontWeight: 600,
+                                    minWidth: 160,
+                                    bgcolor: 'background.paper',
                                 }}
                             >
                                 Vehicle Code
                             </TableCell>
-                            <TableCell 
-                                sx={{ 
-                                    ...excelGridBodyCellSx, 
-                                    fontWeight: 600, 
-                                    minWidth: 280, 
-                                    bgcolor: 'background.paper' 
+                            <TableCell
+                                sx={{
+                                    ...excelGridBodyCellSx,
+                                    fontWeight: 600,
+                                    minWidth: 280,
+                                    bgcolor: 'background.paper',
                                 }}
                             >
                                 Vehicle Title
                             </TableCell>
-                            <TableCell 
-                                width={40} 
-                                sx={{ 
-                                    ...excelGridBodyCellSx, 
+                            <TableCell
+                                width={40}
+                                sx={{
+                                    ...excelGridBodyCellSx,
                                     bgcolor: 'background.paper',
-                                    borderTopRightRadius: '4px'
-                                }} 
+                                    borderTopRightRadius: '4px',
+                                }}
                             />
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {rows.length === 0 ? (
                             <TableRow>
-                                <TableCell 
-                                    colSpan={4} 
-                                    sx={{ 
-                                        ...excelGridBodyCellSx, 
-                                        color: 'text.secondary', 
-                                        fontSize: 12, 
+                                <TableCell
+                                    colSpan={4}
+                                    sx={{
+                                        ...excelGridBodyCellSx,
+                                        color: 'text.secondary',
+                                        fontSize: 12,
                                         textAlign: 'center',
-                                        py: 6
+                                        py: 6,
                                     }}
                                 >
-                                    No vehicles added yet. Click "Add Vehicle" above to start.
+                                    No vehicles added yet. Click &quot;Add Vehicle&quot; above to start.
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -182,10 +179,7 @@ export function VehicleGroupVehiclesTable() {
                                         />
                                     </TableCell>
                                     <TableCell padding="checkbox" sx={excelGridBodyCellSx}>
-                                        <IconButton 
-                                            size="small" 
-                                            onClick={() => removeRow(index)}
-                                        >
+                                        <IconButton size="small" onClick={() => removeRow(index)}>
                                             <DeleteOutlineIcon fontSize="small" />
                                         </IconButton>
                                     </TableCell>

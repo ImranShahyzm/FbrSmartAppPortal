@@ -1,7 +1,4 @@
-import { 
-    FormHeaderToolbar, 
-    FORM_SAVE_CUSTOMER, 
-} from '../../common/formToolbar';
+import { FormHeaderToolbar, FORM_SAVE_SALES_SERVICE_INFO } from '../../common/formToolbar';
 
 type Props = {
     showDelete?: boolean;
@@ -10,7 +7,7 @@ type Props = {
 export function SalesServiceInformationFormToolbar({ showDelete }: Props) {
     return (
         <FormHeaderToolbar
-            saveEventName={FORM_SAVE_CUSTOMER}
+            saveEventName={FORM_SAVE_SALES_SERVICE_INFO}
             resource="salesServiceInfo"           // Updated resource name
             listPath="/salesServiceInfo"          // Updated list path
             showDelete={showDelete}
