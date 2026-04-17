@@ -99,61 +99,6 @@ function useSelectableAccountTypesOrdered(): GlAccountTypeRow[] {
     );
 }
 
-// ─── Active filter chips row ──────────────────────────────────────────────────
-function ActiveFilterChips({
-    activeFilters,
-    accountTypes,
-    onRemoveFilter,
-}: {
-    activeFilters: Set<string>;
-    accountTypes: GlAccountTypeRow[];
-    onRemoveFilter: (k: string) => void;
-}) {
-    const filterChips = Array.from(activeFilters);
-    if (filterChips.length === 0) return null;
-
-    const labelOf = (k: string) => {
-        const id = Number(k);
-        if (!Number.isNaN(id)) {
-            const t = accountTypes.find(x => x.id === id);
-            if (t?.title) return t.title;
-        }
-        return k;
-    };
-
-    return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '4px',
-                px: 2,
-                py: '4px',
-                bgcolor: '#fff',
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-            }}
-        >
-            {filterChips.map(k => (
-                <Chip
-                    key={k}
-                    label={labelOf(k)}
-                    size="small"
-                    onDelete={() => onRemoveFilter(k)}
-                    sx={{
-                        height: 22,
-                        fontSize: 12,
-                        bgcolor: 'rgba(113,75,103,0.10)',
-                        color: '#714b67',
-                        fontWeight: 500,
-                        '& .MuiChip-deleteIcon': { fontSize: 13, color: '#714b67' },
-                    }}
-                />
-            ))}
-        </Box>
-    );
-}
-
 // ─── "All" quick-filter pill ──────────────────────────────────────────────────
 function QuickFilterPill({ label, active, onClick }: { label: string; active?: boolean; onClick?: () => void }) {
     return (
@@ -191,6 +136,7 @@ function ChartListToolbar() {
     const { filterValues, setFilters, page, perPage, total, setPage } = useListContext();
     const canRead = useAccountingAccess('glChartAccounts', 'read');
     const canWrite = useAccountingAccess('glChartAccounts', 'write');
+    const allAccountTypes = useGlAccountTypesLoaded();
     const accountTypesOrdered = useSelectableAccountTypesOrdered();
     const [groupBy, setGroupBy] = useStore<GlChartGroupByMode>(GL_CHART_GROUP_BY_STORE_KEY, 'none');
 
@@ -246,20 +192,81 @@ function ChartListToolbar() {
         return () => window.clearTimeout(t);
     }, [q]);
 
+    const applyTypeIdFilterSet = React.useCallback((next: Set<string>) => {
+        const fv = { ...(filterValuesRef.current as Record<string, unknown>) };
+        const ids = Array.from(next).map(s => Number(s)).filter(x => !Number.isNaN(x));
+        if (ids.length > 0) fv.glTypeIds = ids;
+        else delete fv.glTypeIds;
+        setFiltersRef.current(fv as Record<string, unknown>, null);
+        setPageRef.current(1);
+    }, []);
+
     const toggleTypeFilter = React.useCallback((typeIdStr: string) => {
         setActiveFilters(prev => {
             const n = new Set(prev);
             if (n.has(typeIdStr)) n.delete(typeIdStr);
             else n.add(typeIdStr);
-            const fv = { ...(filterValuesRef.current as Record<string, unknown>) };
-            const ids = Array.from(n).map(s => Number(s)).filter(x => !Number.isNaN(x));
-            if (ids.length > 0) fv.glTypeIds = ids;
-            else delete fv.glTypeIds;
-            setFiltersRef.current(fv as Record<string, unknown>, null);
-            setPageRef.current(1);
+            applyTypeIdFilterSet(n);
             return n;
         });
-    }, []);
+    }, [applyTypeIdFilterSet]);
+
+    const selectableDescendantsOf = React.useMemo(() => {
+        const byParent = new Map<number | null, GlAccountTypeRow[]>();
+        const byId = new Map<number, GlAccountTypeRow>();
+        for (const t of allAccountTypes) {
+            byId.set(t.id, t);
+            const key = (t.mainParent ?? null) as number | null;
+            const arr = byParent.get(key);
+            if (arr) arr.push(t);
+            else byParent.set(key, [t]);
+        }
+
+        const cache = new Map<number, number[]>();
+        const collect = (rootId: number): number[] => {
+            const cached = cache.get(rootId);
+            if (cached) return cached;
+            const out: number[] = [];
+            const stack: number[] = [rootId];
+            const seen = new Set<number>();
+            while (stack.length) {
+                const cur = stack.pop()!;
+                if (seen.has(cur)) continue;
+                seen.add(cur);
+                const node = byId.get(cur);
+                if (node?.selectable) out.push(cur);
+                const kids = byParent.get(cur) ?? [];
+                for (const k of kids) stack.push(k.id);
+            }
+            cache.set(rootId, out);
+            return out;
+        };
+
+        return collect;
+    }, [allAccountTypes]);
+
+    const mainAccountTypes = React.useMemo(
+        () =>
+            [...allAccountTypes]
+                .filter(t => (t.mainParent ?? null) === null)
+                .sort((a, b) => (Number(a.orderBy) || 0) - (Number(b.orderBy) || 0)),
+        [allAccountTypes]
+    );
+
+    const toggleMainTypeFilter = React.useCallback((mainTypeId: number) => {
+        const leafIds = selectableDescendantsOf(mainTypeId);
+        setActiveFilters(prev => {
+            const anySelected = leafIds.some(id => prev.has(String(id)));
+            const next = new Set(prev);
+            if (anySelected) {
+                for (const id of leafIds) next.delete(String(id));
+            } else {
+                for (const id of leafIds) next.add(String(id));
+            }
+            applyTypeIdFilterSet(next);
+            return next;
+        });
+    }, [applyTypeIdFilterSet, selectableDescendantsOf]);
 
     const clearAllTypeFilters = React.useCallback(() => {
         setActiveFilters(new Set());
@@ -749,15 +756,6 @@ function ChartListToolbar() {
                 </Box>
             </Box>
 
-            {/* ── Active filter chips ── */}
-            <ActiveFilterChips
-                activeFilters={activeFilters}
-                accountTypes={accountTypesOrdered}
-                onRemoveFilter={k => {
-                    toggleTypeFilter(k);
-                }}
-            />
-
             {/* ── Quick-filter pill row (All / account types) ── */}
             <Box
                 sx={{
@@ -773,14 +771,15 @@ function ChartListToolbar() {
                 }}
             >
                 <QuickFilterPill label="All" active={activeFilters.size === 0} onClick={clearAllTypeFilters} />
-                {accountTypesOrdered.map(t => {
-                    const idStr = String(t.id);
+                {mainAccountTypes.map(t => {
+                    const leafIds = selectableDescendantsOf(t.id);
+                    const active = leafIds.some(id => activeFilters.has(String(id)));
                     return (
                         <QuickFilterPill
                             key={t.id}
                             label={t.title ?? '—'}
-                            active={activeFilters.has(idStr)}
-                            onClick={() => toggleTypeFilter(idStr)}
+                            active={active}
+                            onClick={() => toggleMainTypeFilter(t.id)}
                         />
                     );
                 })}

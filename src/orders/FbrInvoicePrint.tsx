@@ -113,7 +113,10 @@ export default function FbrInvoicePrint() {
     const money = (n: any) =>
         (Number(n) || 0).toLocaleString(undefined, { style: 'currency', currency });
     const lines = (record.lines ?? []) as Line[];
-    const invoiceDate = new Date(record.invoiceDate ?? record.invoiceDateUtc ?? Date.now());
+    const invoiceDateStr = String(record.invoiceDate ?? '').trim();
+    const invoiceDate = /^\d{4}-\d{2}-\d{2}$/.test(invoiceDateStr)
+        ? invoiceDateStr
+        : new Date(record.invoiceDateUtc ?? Date.now()).toLocaleDateString();
 
     return (
         <Box
@@ -150,7 +153,7 @@ export default function FbrInvoicePrint() {
                                 </Typography>
                             ) : null}
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                Date: {invoiceDate.toLocaleDateString()}
+                                Date: {invoiceDate}
                             </Typography>
                             {record.fbrInvoiceNumber ? (
                                 <Typography variant="body2" color="text.secondary">

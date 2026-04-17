@@ -13,3 +13,4 @@ export const FORM_SAVE_GL_VOUCHER_TYPE = 'glVoucherTypeFormSave';
 export const FORM_SAVE_GL_JOURNAL_VOUCHER = 'glJournalVoucherFormSave';
 export const FORM_SAVE_GEN_BANK_INFORMATION = 'genBankInformationFormSave';
 export const FORM_SAVE_GEN_CASH_INFORMATION = 'genCashInformationFormSave';
+export const FORM_SAVE_GL_ACCOUNT_GROUP = 'glAccountGroupFormSave';

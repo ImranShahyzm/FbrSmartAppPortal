@@ -17,16 +17,18 @@ import {
     required,
 } from 'react-admin';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Alert, Box, Button, Card, CardContent, Divider, Grid, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Grid, IconButton, Tooltip, Typography } from '@mui/material';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 import { postFbrInvoiceToFbr, postFbrInvoiceValidate } from '../api/fbrInvoiceFbrApi';
 import { parseApiUtcInstant } from '../common/parseApiUtcInstant';
 import { FormSaveBridge, FORM_SAVE_FBR_INVOICE } from '../common/formToolbar';
-import { FormHeaderToolbar } from '../common/formToolbar';
+import { FormDocumentWorkflowBar } from '../common/formToolbar';
 import { StatusBreadcrumb, WorkflowActionButton } from '../common/workflowChevronUi';
+import { RecordThreadPanel } from '../common/recordThread';
 import { CustomerInvoicePreview } from './CustomerInvoicePreview';
 import { InvoiceTotalsForm } from './InvoiceTotalsForm';
-import { OrderChatter } from './OrderChatter';
 import { OrderInvoiceLines, emptyInvoiceLine } from './OrderInvoiceLines';
 import { pdf } from '@react-pdf/renderer';
 import { toDataURL as qrToDataUrl } from 'qrcode';
@@ -475,10 +477,7 @@ export function FbrInvoiceForm({ mode }: { mode: FbrInvoiceFormMode }) {
                             pr: { md: 0.5 },
                         }}
                     >
-                        <OrderChatter />
-                        <Box sx={{ mt: 2 }}>
-                            <InvoiceActivityLog />
-                        </Box>
+                        <RecordThreadPanel resourceKey="fbrInvoices" />
                     </Box>
                 ) : (
                     <Box
@@ -671,30 +670,42 @@ function InvoiceSubHeader({
 
     const onDuplicate = React.useCallback(async () => {
         if (!record?.id) return;
-        const src = await dataProvider.getOne('fbrInvoices', { id: record.id });
-        const d: any = src.data ?? {};
-        const payload = {
-            customerPartyId: d.customerPartyId,
-            invoiceDateUtc: new Date().toISOString(),
-            paymentTerms: d.paymentTerms ?? 'immediate',
-            status: 'ordered',
-            deliveryFees: Number(d.deliveryFees) || 0,
-            fbrScenarioId: d.fbrScenarioId ?? null,
-            reference: d.reference != null && String(d.reference).trim() !== '' ? String(d.reference).trim() : '',
-            lines: (d.lines ?? []).map((l: any) => ({
-                productProfileId: l.productProfileId,
-                quantity: Number(l.quantity) || 0,
-                unitPrice: Number(l.unitPrice) || 0,
-                taxRate: Number(l.taxRate) || 0,
-                fbrSalesTaxRateId: l.fbrSalesTaxRateId ?? null,
-                fbrSalesTaxRateIds: Array.isArray(l.fbrSalesTaxRateIds) ? l.fbrSalesTaxRateIds : undefined,
-                discountRate: Number(l.discountRate) || 0,
-                remarks: String(l.remarks ?? ''),
-            })),
-        };
-        const created = await dataProvider.create('fbrInvoices', { data: payload });
-        redirect('edit', 'fbrInvoices', created.data.id);
-    }, [dataProvider, redirect, record?.id]);
+        try {
+            const src = await dataProvider.getOne('fbrInvoices', { id: record.id });
+            const d: any = src.data ?? {};
+            const payload = {
+                customerPartyId: d.customerPartyId,
+                invoiceDate: (() => {
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const dd = String(now.getDate()).padStart(2, '0');
+                    return `${y}-${m}-${dd}`;
+                })(),
+                paymentTerms: d.paymentTerms ?? 'immediate',
+                status: 'ordered',
+                deliveryFees: Number(d.deliveryFees) || 0,
+                fbrScenarioId: d.fbrScenarioId ?? null,
+                // Reference must be unique per company; duplicating it causes a backend 400.
+                reference: '',
+                lines: (d.lines ?? []).map((l: any) => ({
+                    productProfileId: l.productProfileId,
+                    quantity: Number(l.quantity) || 0,
+                    unitPrice: Number(l.unitPrice) || 0,
+                    taxRate: Number(l.taxRate) || 0,
+                    fbrSalesTaxRateId: l.fbrSalesTaxRateId ?? null,
+                    fbrSalesTaxRateIds: Array.isArray(l.fbrSalesTaxRateIds) ? l.fbrSalesTaxRateIds : undefined,
+                    discountRate: Number(l.discountRate) || 0,
+                    remarks: String(l.remarks ?? ''),
+                })),
+            };
+            const created = await dataProvider.create('fbrInvoices', { data: payload });
+            redirect('edit', 'fbrInvoices', created.data.id);
+        } catch (e: any) {
+            const msg = e?.message ? String(e.message) : 'Duplicate failed';
+            notify(msg, { type: 'warning' });
+        }
+    }, [dataProvider, notify, redirect, record?.id]);
 
     const onPrint = React.useCallback(async () => {
         if (!record) return;
@@ -752,7 +763,11 @@ function InvoiceSubHeader({
                     sellerPhone={sellerPhone}
                     invoiceNumber={String(record.invoiceNumber ?? '').trim()}
                     reference={record.reference ?? reference ?? ''}
-                    invoiceDate={new Date(record.invoiceDate ?? record.invoiceDateUtc ?? Date.now()).toLocaleDateString()}
+                    invoiceDate={
+                        typeof record.invoiceDate === 'string' && record.invoiceDate.length >= 10
+                            ? record.invoiceDate.slice(0, 10)
+                            : new Date(record.invoiceDateUtc ?? Date.now()).toLocaleDateString()
+                    }
                     paymentTerms={record.paymentTerms ?? ''}
                     statusLabel={statusLabel}
                     returned={Boolean(record.returned)}
@@ -782,135 +797,80 @@ function InvoiceSubHeader({
     }, [notify, record, reference, dataProvider]);
 
     return (
-        <Box
-            sx={{
-                position: { md: 'sticky' },
-                top: { md: 0 },
-                zIndex: 5,
-                bgcolor: 'background.paper',
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 1,
-                px: 2,
-                py: 1,
-                mb: 1.5,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 2,
-                flexWrap: 'wrap',
-            }}
-        >
-            <Box sx={{ minWidth: 0 }}>
-                <Typography
-                    variant="subtitle2"
-                    fontWeight={700}
-                    sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 1, rowGap: 0.25 }}
-                >
+        <FormDocumentWorkflowBar
+            title={
+                <>
                     <span>
                         {isCreate
                             ? 'Invoice'
                             : `Invoice ${String(record?.invoiceNumber ?? '').trim() || reference || ''}`}
                     </span>
                     {!isCreate && fbrInvoiceNumberWatch ? (
-                        <Typography
+                        <Box
                             component="span"
-                            variant="caption"
-                            fontWeight={600}
-                            color="primary"
-                            sx={{ fontSize: '0.8rem' }}
+                            sx={{
+                                ml: 1,
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                color: 'primary.main',
+                            }}
                         >
                             FBR {fbrInvoiceNumberWatch}
-                        </Typography>
+                        </Box>
                     ) : null}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" noWrap>
-                    {translate('resources.fbrInvoices.subheader.hint', { _: 'All changes are saved on the server.' })}
-                </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                {!isCreate ? (
+                </>
+            }
+            subtitle={translate('resources.fbrInvoices.subheader.hint', { _: 'All changes are saved on the server.' })}
+            navigationActions={
+                !isCreate ? (
                     <PrevNextButtons
                         resource="fbrInvoices"
-                        filterDefaultValues={{ status: 'ordered' }}
                         sort={{ field: 'invoiceDate', order: 'DESC' }}
                     />
-                ) : null}
-                <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-                <FormHeaderToolbar
-                    saveEventName={FORM_SAVE_FBR_INVOICE}
-                    resource="fbrInvoices"
-                    listPath="/fbrInvoices"
-                    showDelete={!isCreate}
-                    disableSave={!isCreate && isLocked}
-                    disableDelete={!isCreate && isLocked}
-                    showSave={isCreate || isEditing}
-                    settingsItems={
-                        isCreate
-                            ? []
-                            : [
-                                  {
-                                      key: 'edit',
-                                      label: isEditing ? 'Stop editing' : 'Edit',
-                                      onClick: async () => { if (isEditing) onStopEdit(); else onStartEdit(); },
-                                      disabled: isLocked,
-                                  },
-                                  { key: 'duplicate', label: 'Duplicate', onClick: onDuplicate },
-                                  { key: 'print', label: 'Print', onClick: onPrint },
-                              ]
-                    }
-                />
-            </Box>
-        </Box>
-    );
-}
-
-function InvoiceActivityLog() {
-    const record = useRecordContext<any>();
-    const created = record?.createdAtUtc ?? record?.createdAt;
-    const updated = record?.updatedAtUtc ?? record?.updatedAt;
-    const createdBy = record?.createdByDisplayName as string | undefined;
-    const updatedBy = record?.updatedByDisplayName as string | undefined;
-    const createdAt = created ? parseApiUtcInstant(created) ?? null : null;
-    const updatedAt = updated ? parseApiUtcInstant(updated) ?? null : null;
-    const updatedDiffers =
-        createdAt && updatedAt ? createdAt.getTime() !== updatedAt.getTime() : Boolean(updatedAt);
-    const fbrErr = (record?.fbrLastError as string | null | undefined) ?? null;
-
-    return (
-        <Card variant="outlined">
-            <CardContent sx={{ pt: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                    Activities
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                    Creation and update logs
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {fbrErr ? (
-                        <Alert severity="error" sx={{ '& .MuiAlert-message': { width: '100%' }, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                            <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>FBR Error</Typography>
-                            <Typography variant="body2" component="div" sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
-                                {fbrErr}
-                            </Typography>
-                        </Alert>
-                    ) : null}
-                    {createdAt ? (
-                        <Typography variant="body2">
-                            <b>Created</b> {createdBy ? <>{createdBy} </> : null}{createdAt.toLocaleString()}
-                        </Typography>
-                    ) : null}
-                    {updatedAt && updatedDiffers ? (
-                        <Typography variant="body2">
-                            <b>Updated</b> {updatedBy ? <>{updatedBy} </> : null}{updatedAt.toLocaleString()}
-                        </Typography>
-                    ) : null}
-                    {!createdAt && !updatedAt ? (
-                        <Typography variant="body2" color="text.secondary">No activity yet.</Typography>
-                    ) : null}
-                </Box>
-            </CardContent>
-        </Card>
+                ) : (
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <Tooltip title="Previous">
+                            <span>
+                                <IconButton size="small" disabled sx={{ color: 'text.primary' }}>
+                                    <NavigateBeforeIcon sx={{ fontSize: 18 }} />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                        <Tooltip title="Next">
+                            <span>
+                                <IconButton size="small" disabled sx={{ color: 'text.primary' }}>
+                                    <NavigateNextIcon sx={{ fontSize: 18 }} />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    </Box>
+                )
+            }
+            saveEventName={FORM_SAVE_FBR_INVOICE}
+            resource="fbrInvoices"
+            listPath="/fbrInvoices"
+            showDelete={!isCreate}
+            disableSave={!isCreate && isLocked}
+            disableDelete={!isCreate && isLocked}
+            showSave={isCreate || isEditing}
+            settingsItems={
+                isCreate
+                    ? []
+                    : [
+                          {
+                              key: 'edit',
+                              label: isEditing ? 'Stop editing' : 'Edit',
+                              onClick: async () => {
+                                  if (isEditing) onStopEdit();
+                                  else onStartEdit();
+                              },
+                              disabled: isLocked,
+                          },
+                          { key: 'duplicate', label: 'Duplicate', onClick: onDuplicate },
+                          { key: 'print', label: 'Print', onClick: onPrint },
+                      ]
+            }
+        />
     );
 }
 

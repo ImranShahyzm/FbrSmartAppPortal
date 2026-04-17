@@ -1,6 +1,6 @@
 /**
  * New product registration. FBR digital-invoice line `saleType` is built on the server from
- * **Sale Type Fbr** (`fbrPdiTransTypeId` → synced PDI transaction type description), not from **Product Type** (`fbrProductType`).
+ * **Sale Type FBR** (`fbrPdiTransTypeId` → synced PDI transaction type description), not from **Product Type** (`fbrProductType`).
  */
 import { Create, SimpleForm } from 'react-admin';
 import { Box, Divider, Typography } from '@mui/material';
@@ -15,7 +15,7 @@ import { ProductProfileFormLayout } from './ProductProfileFormLayout';
 export default function ProductProfileCreate() {
     return (
         <Create
-            title="Product Registration"
+            title="Products"
             actions={false}
             sx={{
                 width: '100%',
@@ -52,7 +52,7 @@ export default function ProductProfileCreate() {
                 >
                     <Box sx={{ minWidth: 0 }}>
                         <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ fontSize: '0.85rem' }}>
-                            Product Registration
+                            Products
                         </Typography>
                         <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.72rem' }}>
                             All changes are saved on the server.

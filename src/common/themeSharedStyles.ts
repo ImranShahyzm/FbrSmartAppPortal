@@ -90,10 +90,10 @@ export const excelGridInlineFieldSx: SxProps<Theme> = {
         minHeight: EXCEL_GRID_ROW_INPUT_MIN_HEIGHT,
     },
     '& .MuiInputBase-input': { py: '2px', px: 0.25 },
-    '& .MuiInput-underline:before': { borderBottomColor: 'divider' },
-    '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
-        borderBottomColor: 'action.active',
-    },
+    // Grid cells already have borders; remove per-input underline to avoid double borders.
+    '& .MuiInput-underline:before': { borderBottom: 'none' },
+    '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+    '& .MuiInput-underline:after': { borderBottom: 'none' },
 };
 
 export const sgPickerDialogPaperSx: SxProps<Theme> = {

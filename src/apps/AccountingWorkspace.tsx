@@ -12,6 +12,9 @@ import { ChartOfAccountsList } from '../accounting/ChartOfAccountsList';
 import GlChartAccountCreate from '../accounting/GlChartAccountCreate';
 import GlChartAccountEdit from '../accounting/GlChartAccountEdit';
 import { GlVoucherTypeList } from '../accounting/GlVoucherTypeList';
+import GlAccountGroupList from '../accounting/glAccountGroups/GlAccountGroupList';
+import GlAccountGroupCreate from '../accounting/glAccountGroups/GlAccountGroupCreate';
+import GlAccountGroupEdit from '../accounting/glAccountGroups/GlAccountGroupEdit';
 import GlJournalVoucherCreate from '../accounting/GlJournalVoucherCreate';
 import GlJournalVoucherEdit from '../accounting/GlJournalVoucherEdit';
 import GlJournalVoucherList from '../accounting/GlJournalVoucherList';
@@ -102,6 +105,14 @@ export function AccountingWorkspace(props: WorkspaceComponentProps) {
                         list={GlVoucherTypeList}
                         create={GlVoucherTypeCreate}
                         edit={GlVoucherTypeEdit}
+                    />
+                ) : null}
+                {showResource('glAccountGroups') ? (
+                    <Resource
+                        name="glAccountGroups"
+                        list={GlAccountGroupList}
+                        create={GlAccountGroupCreate}
+                        edit={GlAccountGroupEdit}
                     />
                 ) : null}
                 {showResource('glJournalVouchers') ? (

@@ -49,6 +49,13 @@ public sealed class GlChartOfAccountsController : ControllerBase
             try
             {
                 using var doc = JsonDocument.Parse(filter);
+                if (doc.RootElement.TryGetProperty("postingOnly", out var poEl) &&
+                    (poEl.ValueKind == JsonValueKind.True || poEl.ValueKind == JsonValueKind.False) &&
+                    poEl.GetBoolean())
+                {
+                    // Deprecated accounts are stored as Status=false.
+                    query = query.Where(x => x.Status);
+                }
                 if (doc.RootElement.TryGetProperty("q", out var qEl))
                 {
                     var q = qEl.GetString();
@@ -576,6 +583,11 @@ public sealed class GlChartOfAccountsController : ControllerBase
             recEl.ValueKind is JsonValueKind.True or JsonValueKind.False)
             allowRec = recEl.GetBoolean();
 
+        var deprecated = false;
+        if (body.TryGetProperty("deprecated", out var depEl) &&
+            depEl.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            deprecated = depEl.GetBoolean();
+
         string? currency = null;
         if (body.TryGetProperty("accountCurrency", out var curEl) && curEl.ValueKind == JsonValueKind.String)
         {
@@ -616,6 +628,8 @@ public sealed class GlChartOfAccountsController : ControllerBase
 
         var groupKey = Guid.NewGuid().ToString();
         GlChartOfAccount? primary = null;
+        var createdRows = new List<GlChartOfAccount>();
+        var tagIds = ParseTagIds(body);
 
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
@@ -629,7 +643,7 @@ public sealed class GlChartOfAccountsController : ControllerBase
                     GlTitle = title,
                     GlType = glType,
                     CompanyId = cid,
-                    Status = true,
+                    Status = !deprecated,
                     ReadOnly = false,
                     AllowReconciliation = allowRec,
                     AccountCurrency = currency,
@@ -643,11 +657,32 @@ public sealed class GlChartOfAccountsController : ControllerBase
                 }
 
                 _db.GlChartOfAccounts.Add(entity);
+                createdRows.Add(entity);
                 if (cid == companyId)
                     primary = entity;
             }
 
             await _db.SaveChangesAsync(ct);
+
+            if (tagIds.Count > 0)
+            {
+                foreach (var row in createdRows)
+                {
+                    var cid = row.CompanyId ?? companyId;
+                    foreach (var tid in tagIds)
+                    {
+                        _db.PhaseTagLinks.Add(new PhaseTagLink
+                        {
+                            CompanyId = cid,
+                            ResourceKey = "glChartAccounts",
+                            RecordId = row.Id,
+                            PhaseTagId = tid,
+                        });
+                    }
+                }
+                await _db.SaveChangesAsync(ct);
+            }
+
             await tx.CommitAsync(ct);
         }
         catch (Exception ex)
@@ -696,6 +731,8 @@ public sealed class GlChartOfAccountsController : ControllerBase
             body.TryGetProperty("glType", out _) ||
             body.TryGetProperty("accountCurrency", out _) ||
             body.TryGetProperty("allowReconciliation", out _) ||
+            body.TryGetProperty("deprecated", out _) ||
+            body.TryGetProperty("tagIds", out _) ||
             wantsSync;
 
         if (entity.ReadOnly && anyMutation)
@@ -734,6 +771,12 @@ public sealed class GlChartOfAccountsController : ControllerBase
                 entity.AllowReconciliation = recEl.GetBoolean();
         }
 
+        if (body.TryGetProperty("deprecated", out var depEl))
+        {
+            if (depEl.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                entity.Status = !depEl.GetBoolean();
+        }
+
         if (body.TryGetProperty("glType", out var glTypeEl))
         {
             if (glTypeEl.ValueKind == JsonValueKind.Null)
@@ -766,6 +809,12 @@ public sealed class GlChartOfAccountsController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
+
+        if (body.TryGetProperty("tagIds", out _))
+        {
+            var tagIds = ParseTagIds(body);
+            await ReplaceTagLinksAsync(companyId, entity.Id, tagIds, ct);
+        }
 
         return Ok(await BuildDetailDtoAsync(entity, user, companyId, ct));
     }
@@ -909,6 +958,13 @@ public sealed class GlChartOfAccountsController : ControllerBase
                 mappingCodes[cid2.ToString()] = s.GlCode!;
         }
 
+        var tagIds = await _db.PhaseTagLinks.AsNoTracking()
+            .Where(l => l.CompanyId == currentCompanyId && l.ResourceKey == "glChartAccounts" && l.RecordId == x.Id)
+            .Select(l => l.PhaseTagId)
+            .Distinct()
+            .OrderBy(id => id)
+            .ToListAsync(ct);
+
         return new GlChartAccountListDto
         {
             id = x.Id,
@@ -924,6 +980,8 @@ public sealed class GlChartOfAccountsController : ControllerBase
             companyIds = companyIds,
             mappingCodes = mappingCodes,
             chartAccountGroupKey = x.ChartAccountGroupKey,
+            deprecated = !x.Status,
+            tagIds = tagIds,
         };
     }
 
@@ -1009,6 +1067,39 @@ public sealed class GlChartOfAccountsController : ControllerBase
         }
 
         return map;
+    }
+
+    private static List<int> ParseTagIds(JsonElement body)
+    {
+        var list = new List<int>();
+        if (!body.TryGetProperty("tagIds", out var arr) || arr.ValueKind != JsonValueKind.Array)
+            return list;
+        foreach (var el in arr.EnumerateArray())
+        {
+            if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var id) && id > 0)
+                list.Add(id);
+        }
+        return list.Distinct().ToList();
+    }
+
+    private async Task ReplaceTagLinksAsync(int companyId, int recordId, List<int> tagIds, CancellationToken ct)
+    {
+        var existing = await _db.PhaseTagLinks
+            .Where(l => l.CompanyId == companyId && l.ResourceKey == "glChartAccounts" && l.RecordId == recordId)
+            .ToListAsync(ct);
+        _db.PhaseTagLinks.RemoveRange(existing);
+
+        foreach (var tid in tagIds.Distinct())
+        {
+            _db.PhaseTagLinks.Add(new PhaseTagLink
+            {
+                CompanyId = companyId,
+                ResourceKey = "glChartAccounts",
+                RecordId = recordId,
+                PhaseTagId = tid,
+            });
+        }
+        await _db.SaveChangesAsync(ct);
     }
 
     private static List<int> InferCompanyIdsFromMapping(JsonElement body, int currentCompanyId)
@@ -1142,6 +1233,8 @@ public sealed class GlChartOfAccountsController : ControllerBase
         public List<int>? companyIds { get; set; }
         public Dictionary<string, string>? mappingCodes { get; set; }
         public string? chartAccountGroupKey { get; set; }
+        public bool? deprecated { get; set; }
+        public List<int>? tagIds { get; set; }
     }
 
     public sealed class GlChartAccountImportResponse

@@ -23,6 +23,7 @@
       "displayName": "Accounting",
       "resources": [
         { "key": "glChartAccounts", "label": "Chart of accounts" },
+        { "key": "glAccountGroups", "label": "Account groups" },
         { "key": "glVoucherTypes", "label": "Voucher types" },
         { "key": "glJournalVouchers", "label": "Journal vouchers" },
         { "key": "glAccountTypes", "label": "GL account types" },

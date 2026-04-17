@@ -34,6 +34,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<FbrSalesTaxRate> FbrSalesTaxRates => Set<FbrSalesTaxRate>();
     public DbSet<FbrSalesTaxRateChatterMessage> FbrSalesTaxRateChatterMessages => Set<FbrSalesTaxRateChatterMessage>();
     public DbSet<GlChartOfAccount> GlChartOfAccounts => Set<GlChartOfAccount>();
+    public DbSet<GlAccountGroup> GlAccountGroups => Set<GlAccountGroup>();
     public DbSet<GlAccountType> GlAccountTypes => Set<GlAccountType>();
     public DbSet<GenBranchInfo> GenBranchInfos => Set<GenBranchInfo>();
     public DbSet<GlChartOfAccountBranchDetail> GlChartOfAccountBranchDetails => Set<GlChartOfAccountBranchDetail>();
@@ -48,6 +49,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<GenCashInformation> GenCashInformations => Set<GenCashInformation>();
     public DbSet<GenCashInformationUser> GenCashInformationUsers => Set<GenCashInformationUser>();
     public DbSet<AppRecordMessage> AppRecordMessages => Set<AppRecordMessage>();
+    public DbSet<PhaseTag> PhaseTags => Set<PhaseTag>();
+    public DbSet<PhaseTagLink> PhaseTagLinks => Set<PhaseTagLink>();
     public DbSet<SecurityGroup> SecurityGroups => Set<SecurityGroup>();
     public DbSet<UserSecurityGroup> UserSecurityGroups => Set<UserSecurityGroup>();
     public DbSet<GroupAccessRight> GroupAccessRights => Set<GroupAccessRight>();
@@ -101,6 +104,7 @@ public sealed class AppDbContext : DbContext
 
         modelBuilder.Entity<ProductProfile>(entity =>
         {
+            entity.ToTable("InventItems");
             entity.HasIndex(x => new { x.CompanyId, x.ProductNo }).IsUnique();
             entity.Property(x => x.CompanyId).IsRequired();
             entity.Property(x => x.ProductNo).HasMaxLength(50).IsRequired();
@@ -113,6 +117,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(x => x.SroItemRefText).HasMaxLength(500);
             entity.Property(x => x.ProductImage).HasMaxLength(400);
             entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.MrpRateValue).HasPrecision(18, 4);
             entity.Property(x => x.FbrUomId);
             entity.Property(x => x.FbrPdiTransTypeId);
         });
@@ -222,6 +227,11 @@ public sealed class AppDbContext : DbContext
                 .IsUnique()
                 .HasDatabaseName("UX_FbrInvoices_Company_ExcelUniqueInvoiceId")
                 .HasFilter("[ExcelUniqueInvoiceId] IS NOT NULL");
+
+            entity.HasIndex(x => new { x.CompanyId, x.InvoiceNumber })
+                .IsUnique()
+                .HasDatabaseName("UX_FbrInvoices_Company_InvoiceNumber")
+                .HasFilter("[InvoiceNumber] IS NOT NULL AND [InvoiceNumber] <> N''");
         });
 
         modelBuilder.Entity<FbrInvoiceLine>(entity =>
@@ -232,6 +242,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(x => x.UnitPrice).HasPrecision(18, 4);
             entity.Property(x => x.TaxRate).HasPrecision(18, 6);
             entity.Property(x => x.DiscountRate).HasPrecision(18, 6);
+            entity.Property(x => x.MrpRateValue).HasPrecision(18, 4);
             entity.Property(x => x.HsCode).HasMaxLength(50).IsRequired();
             entity.Property(x => x.SroItemText).HasMaxLength(500).IsRequired();
             entity.Property(x => x.Remarks).HasMaxLength(500).IsRequired();
@@ -436,6 +447,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
             entity.Property(x => x.ApplicationScope).HasMaxLength(120);
             entity.Property(x => x.Notes).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.ApiKeysMaxDurationDays).HasPrecision(18, 2);
             entity.HasIndex(x => new { x.CompanyId, x.Name });
             entity.HasMany(x => x.UserLinks)
                 .WithOne(x => x.SecurityGroup)
@@ -525,6 +537,31 @@ public sealed class AppDbContext : DbContext
             entity.Property(x => x.CurrencyName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.CurrencyShortName).HasMaxLength(50).IsRequired();
             entity.Property(x => x.CurrencySymbol).HasMaxLength(100).IsRequired();
+        });
+
+        modelBuilder.Entity<GlAccountGroup>(entity =>
+        {
+            entity.ToTable("GlAccountGroups");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.CompanyId).IsRequired();
+            entity.Property(x => x.GroupName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.FromCode).IsRequired();
+            entity.Property(x => x.ToCode).IsRequired();
+            entity.Property(x => x.ColorHex).HasMaxLength(7).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            entity.HasIndex(x => new { x.CompanyId, x.ParentGroupId, x.FromCode, x.ToCode }).IsUnique();
+
+            entity.HasOne<Company>()
+                .WithMany()
+                .HasForeignKey(x => x.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ParentGroup)
+                .WithMany()
+                .HasForeignKey(x => x.ParentGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<GlVoucherType>(entity =>
@@ -680,6 +717,24 @@ public sealed class AppDbContext : DbContext
             entity.Property(x => x.AttachmentsJson).HasColumnType("nvarchar(max)");
             entity.Property(x => x.MentionedUserIdsJson).HasColumnType("nvarchar(max)");
             entity.HasIndex(x => new { x.CompanyId, x.ResourceKey, x.RecordKey });
+        });
+
+        modelBuilder.Entity<PhaseTag>(entity =>
+        {
+            entity.ToTable("gen_Pes_PhaseTags");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.TagName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.TagColor).HasMaxLength(20);
+            entity.HasIndex(x => new { x.CompanyId, x.TagName });
+        });
+
+        modelBuilder.Entity<PhaseTagLink>(entity =>
+        {
+            entity.ToTable("gen_Pes_PhaseTagLinks");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ResourceKey).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.CompanyId, x.ResourceKey, x.RecordId });
+            entity.HasIndex(x => new { x.CompanyId, x.ResourceKey, x.RecordId, x.PhaseTagId }).IsUnique();
         });
     }
 }

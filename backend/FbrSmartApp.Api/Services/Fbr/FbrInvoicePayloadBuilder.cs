@@ -30,7 +30,7 @@ public static class FbrInvoicePayloadBuilder
         var payload = new FbrDigitalInvoicePayload
         {
             InvoiceType = DefaultInvoiceType,
-            InvoiceDate = invoice.InvoiceDateUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            InvoiceDate = invoice.InvoiceDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             SellerBusinessName = company.Title ?? "",
             SellerProvince = sellerProvinceName ?? "",
             SellerAddress = company.Address ?? "",
@@ -53,7 +53,12 @@ public static class FbrInvoicePayloadBuilder
             var discPct = line.DiscountRate < 0 ? 0 : (line.DiscountRate > 100 ? 100 : line.DiscountRate);
             var net = gross * (1 - discPct / 100m);
             var taxMult = ResolveTaxMultiplier(line);
-            var tax = net * taxMult;
+            // Use invoice line overrides (must not fall back to product profile after user edits invoice).
+            var fixedNotifiedApplicable = line.FixedNotifiedApplicable;
+            var fixedNotified = fixedNotifiedApplicable ? line.MrpRateValue : 0m;
+            var mrpGross = line.Quantity * fixedNotified;
+            var taxBase = fixedNotifiedApplicable && fixedNotified > 0 ? mrpGross : net;
+            var tax = taxBase * taxMult;
             var lineTotal = net + tax;
 
             var saleType = ResolveSaleType(prof, pdiTransTypeDescriptionByTransTypeId);
@@ -72,8 +77,6 @@ public static class FbrInvoicePayloadBuilder
             var (sroSchedule, sroItemSerial) = ResolveSroPayload(prof, line, sroScheduleAndItemBySroItemId);
 
             var rateLabel = ResolveRateLabel(line, salesTaxRateById);
-
-            var fixedNotified = prof?.RateValue ?? 0m;
 
             payload.Items.Add(new FbrDigitalInvoiceLinePayload
             {

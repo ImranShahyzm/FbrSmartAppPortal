@@ -231,7 +231,7 @@ function BalCell({ value, sx: extraSx }: { value: number; sx?: object }) {
             sx={{
                 ...cellSx,
                 fontVariantNumeric: 'tabular-nums',
-                color: isZero ? 'text.disabled' : isCr ? 'error.main' : 'text.primary',
+                color: isZero ? 'text.disabled' : isCr ? 'error.dark' : 'text.primary',
                 ...extraSx,
             }}
         >
@@ -266,7 +266,7 @@ function DetailBalCell({ value }: { value: number }) {
             sx={{
                 ...detailCellSx,
                 fontVariantNumeric: 'tabular-nums',
-                color: isZero ? 'text.disabled' : isCr ? 'error.main' : 'text.primary',
+                color: isZero ? 'text.disabled' : isCr ? 'error.dark' : 'text.primary',
             }}
         >
             {isZero ? '0.00' : `${formatMoneyAbs(value)}\u00a0${isCr ? 'Cr' : 'Dr'}`}
@@ -883,7 +883,11 @@ export function GeneralLedgerReportPage() {
                             <Table
                                 size="small"
                                 stickyHeader
-                                sx={{ '& .MuiTableCell-root': { borderColor: 'divider' } }}
+                                sx={{
+                                    '& .MuiTableCell-root': { borderColor: 'divider' },
+                                    // Remove horizontal separators between summary rows.
+                                    '& tbody .MuiTableCell-root': { borderBottom: 'none' },
+                                }}
                             >
                                 <TableHead>
                                     <TableRow>

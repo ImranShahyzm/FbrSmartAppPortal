@@ -1,5 +1,7 @@
 import { getAccessToken } from './tokenStorage';
 import { API_BASE_URL } from './apiBaseUrl';
+import { getActiveAppIdForHttpHeader } from './activeAppIdHeader';
+import { HttpHeaderNames } from './httpHeaders';
 
 async function parseErrorMessage(res: Response): Promise<string> {
     const text = await res.text();
@@ -18,7 +20,10 @@ export async function postFbrInvoiceValidate(invoiceId: string): Promise<unknown
     const headers: HeadersInit = {
         Accept: 'application/json',
     };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers[HttpHeaderNames.ActiveAppId] = getActiveAppIdForHttpHeader();
+    }
 
     const res = await fetch(
         `${API_BASE_URL}/api/fbrInvoices/${encodeURIComponent(invoiceId)}/validate`,
@@ -34,7 +39,10 @@ export async function postFbrInvoiceToFbr(invoiceId: string): Promise<unknown> {
     const headers: HeadersInit = {
         Accept: 'application/json',
     };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers[HttpHeaderNames.ActiveAppId] = getActiveAppIdForHttpHeader();
+    }
 
     const res = await fetch(
         `${API_BASE_URL}/api/fbrInvoices/${encodeURIComponent(invoiceId)}/post`,

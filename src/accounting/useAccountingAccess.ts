@@ -3,6 +3,7 @@ import { ACCOUNTING_SUITE_APP_ID } from '../apps/appsRegistry';
 
 export type AccountingSecurableResource =
     | 'glChartAccounts'
+    | 'glAccountGroups'
     | 'glVoucherTypes'
     | 'glJournalVouchers'
     | 'genBankInformation'

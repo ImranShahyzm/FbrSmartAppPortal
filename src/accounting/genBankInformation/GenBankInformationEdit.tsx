@@ -44,10 +44,12 @@ export function GenBankInformationEdit() {
             sx={{
                 width: '100%',
                 maxWidth: '100%',
-                '& .RaEdit-main': { maxWidth: '100%', width: '100%' },
+                '& .RaEdit-main': { maxWidth: '100%', width: '100%', p: 0, pt: 0, mt: 0 },
+                '& .RaEdit-content': { p: 0, pt: 0, mt: 0 },
                 '& .RaEdit-card': {
                     maxWidth: '100% !important',
                     width: '100%',
+                    m: 0,
                     boxShadow: 'none',
                 },
             }}

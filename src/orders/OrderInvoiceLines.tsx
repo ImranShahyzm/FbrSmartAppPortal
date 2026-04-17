@@ -37,6 +37,8 @@ type ColumnKey =
     | 'sro_item'
     | 'fbr_sale_type'
     | 'remarks'
+    | 'mrp_rate'
+    | 'fixed_notified'
     | 'discount_pct'
     | 'tax_amount'
     | 'gross_amount';
@@ -47,6 +49,8 @@ const defaultColumns: Record<ColumnKey, boolean> = {
     sro_item: true,
     fbr_sale_type: true,
     remarks: true,
+    mrp_rate: false,
+    fixed_notified: false,
     discount_pct: false,
     tax_amount: false,
     gross_amount: false,
@@ -93,6 +97,22 @@ const cellSx = {
     ...cellBorder,
 };
 
+/** Sticky action column (delete) at extreme right */
+const stickyRightActionCellSx = {
+    position: 'sticky' as const,
+    right: 0,
+    zIndex: 3,
+    bgcolor: 'background.paper',
+    borderLeft: '1px solid',
+    borderLeftColor: 'divider',
+};
+
+const stickyRightActionHeaderCellSx = {
+    ...stickyRightActionCellSx,
+    zIndex: 4,
+    bgcolor: 'action.hover',
+};
+
 const thSx = {
     fontWeight: 700,
     fontSize: 12,
@@ -112,6 +132,8 @@ type ProductProfileRecord = {
     productName?: string;
     hsCode?: string;
     rateValue?: number | null;
+    fixedNotifiedApplicable?: boolean | null;
+    mrpRateValue?: number | null;
     sroScheduleNoText?: string | null;
     sroItemRefText?: string | null;
     fbrPdiTransTypeId?: number | null;
@@ -132,6 +154,8 @@ export function emptyInvoiceLine(): FbrInvoiceLineForm {
         fbrSalesTaxRateId: null,
         fbrSalesTaxRateIds: [],
         discountRate: 0,
+        fixedNotifiedApplicable: false,
+        mrpRateValue: 0,
         hsCode: '',
         sroItemText: '',
         sroScheduleNoText: '',
@@ -156,10 +180,18 @@ function InvoiceLineRow({
 
     const invoiceDate = useWatch({ name: 'invoiceDate' }) as Date | string | undefined;
     const asOfStr = React.useMemo(() => {
-        if (invoiceDate instanceof Date && !Number.isNaN(invoiceDate.getTime()))
-            return invoiceDate.toISOString().slice(0, 10);
+        if (invoiceDate instanceof Date && !Number.isNaN(invoiceDate.getTime())) {
+            const y = invoiceDate.getFullYear();
+            const m = String(invoiceDate.getMonth() + 1).padStart(2, '0');
+            const d = String(invoiceDate.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
         if (typeof invoiceDate === 'string' && invoiceDate.length >= 10) return invoiceDate.slice(0, 10);
-        return new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }, [invoiceDate]);
 
     const fbrSalesTaxRateIds = useWatch({ name: `${base}.fbrSalesTaxRateIds` }) as
@@ -256,6 +288,16 @@ function InvoiceLineRow({
                     shouldDirty: false,
                     shouldValidate: false,
                 });
+                setValue(`${base}.fixedNotifiedApplicable`, Boolean(profile.fixedNotifiedApplicable), {
+                    shouldDirty: false,
+                    shouldValidate: false,
+                });
+                if (profile.mrpRateValue != null) {
+                    setValue(`${base}.mrpRateValue`, Number(profile.mrpRateValue) || 0, {
+                        shouldDirty: false,
+                        shouldValidate: false,
+                    });
+                }
                 const ttId = profile.fbrPdiTransTypeId;
                 if (ttId != null && Number(ttId) > 0) {
                     const many = await dataProvider.getMany('fbrPdiTransTypes', { ids: [Number(ttId)] });
@@ -281,6 +323,8 @@ function InvoiceLineRow({
 
     const qty = Number(useWatch({ name: `${base}.quantity` })) || 0;
     const price = Number(useWatch({ name: `${base}.unitPrice` })) || 0;
+    const fixedNotifiedApplicable = Boolean(useWatch({ name: `${base}.fixedNotifiedApplicable` }));
+    const mrpRateValue = Number(useWatch({ name: `${base}.mrpRateValue` })) || 0;
     const discountRate = Math.max(
         0,
         Math.min(1, (Number(useWatch({ name: `${base}.discountRate` })) || 0) / 100)
@@ -288,7 +332,11 @@ function InvoiceLineRow({
     const net = qty * price;
     const netAfterDiscount = net * (1 - discountRate);
     const taxRate = Number(useWatch({ name: `${base}.taxRate` })) || 0;
-    const taxAmount = netAfterDiscount * taxRate;
+    // Business rule: when Fixed Notified (MRP) applies, tax is computed on (MRP * Qty),
+    // and then added on top of the normal sale net (sale rate * qty with discount).
+    const mrpGross = qty * mrpRateValue;
+    const taxBase = fixedNotifiedApplicable && mrpRateValue > 0 ? mrpGross : netAfterDiscount;
+    const taxAmount = taxBase * taxRate;
     const gross = netAfterDiscount + taxAmount;
     const num = (n: number) =>
         (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -577,8 +625,51 @@ function InvoiceLineRow({
                 </TableCell>
             )}
 
+            {/* ── Optional: MRP (tax base when FN applies) ── */}
+            {columns.mrp_rate && (
+                <TableCell align="right" sx={{ width: '9%' }}>
+                    <NumberInput
+                        source={`${base}.mrpRateValue`}
+                        label={false}
+                        size="small"
+                        variant="standard"
+                        margin="none"
+                        disabled={!fixedNotifiedApplicable}
+                        sx={{
+                            width: '100%',
+                            maxWidth: 108,
+                            ml: 'auto',
+                            display: 'block',
+                            ...inputBaseSx,
+                            '& .MuiInputBase-input': {
+                                ...((inputBaseSx['& .MuiInputBase-input'] as object) ?? {}),
+                                textAlign: 'right',
+                            },
+                        }}
+                    />
+                </TableCell>
+            )}
+            {columns.fixed_notified && (
+                <TableCell align="center" sx={{ width: 40 }}>
+                    <Checkbox
+                        checked={fixedNotifiedApplicable}
+                        onChange={e =>
+                            setValue(`${base}.fixedNotifiedApplicable`, e.target.checked, { shouldDirty: true })
+                        }
+                        size="small"
+                    />
+                </TableCell>
+            )}
+
             {/* ── Delete ── */}
-            <TableCell align="center" sx={{ width: 36, px: '4px !important' }}>
+            <TableCell
+                align="center"
+                sx={{
+                    width: 36,
+                    px: '4px !important',
+                    ...stickyRightActionCellSx,
+                }}
+            >
                 <IconButton
                     size="small"
                     onClick={onRemove}
@@ -646,6 +737,8 @@ export function OrderInvoiceLines() {
                                     ['sro_item', 'Sro Item'],
                                     ['fbr_sale_type', 'FBR Sale type'],
                                     ['remarks', 'Remarks'],
+                                        ['mrp_rate', 'MRP / Fixed notified'],
+                                    ['fixed_notified', 'Fixed Notified (FN)'],
                                     ['discount_pct', 'Discount %'],
                                     ['tax_amount', 'Tax amount'],
                                     ['gross_amount', 'Gross amount'],
@@ -675,15 +768,16 @@ export function OrderInvoiceLines() {
                     borderColor: 'divider',
                     borderRadius: 1,
                     bgcolor: 'background.paper',
+                    overflowX: 'auto',
                 }}
             >
                 <Table
                     size="small"
                     sx={{
                         borderCollapse: 'collapse',
-                        tableLayout: 'fixed',
+                        tableLayout: 'auto',
                         width: '100%',
-                        minWidth: 880,
+                        minWidth: 1200,
                         '& .MuiTableCell-root': { boxSizing: 'border-box' },
                     }}
                 >
@@ -701,8 +795,16 @@ export function OrderInvoiceLines() {
                             <TableCell align="right" sx={{ ...thSx, width: '10%' }}>
                                 {translate('resources.orders.invoice.net_amount', { _: 'Net amount' })}
                             </TableCell>
-                            <TableCell align="right" sx={{ ...thSx, width: '8%' }}>
-                                {translate('resources.orders.fields.basket.taxes', { _: 'Tax' })}
+                        <TableCell
+                            align="center"
+                            sx={{
+                                ...thSx,
+                                width: '16%',
+                                minWidth: 168,
+                                maxWidth: 280,
+                            }}
+                        >
+                            {translate('resources.orders.fields.basket.taxes', { _: 'Tax' })}
                             </TableCell>
                             {columns.discount_pct && (
                                 <TableCell align="right" sx={{ ...thSx, width: '7%' }}>
@@ -748,7 +850,24 @@ export function OrderInvoiceLines() {
                                     {translate('resources.orders.invoice.remarks', { _: 'Remarks' })}
                                 </TableCell>
                             )}
-                            <TableCell sx={{ ...thSx, width: 36, px: '4px' }} />
+                            {columns.mrp_rate && (
+                                <TableCell align="right" sx={{ ...thSx, width: '9%' }}>
+                                    {translate('resources.orders.invoice.mrp_rate', { _: 'MRP' })}
+                                </TableCell>
+                            )}
+                            {columns.fixed_notified && (
+                                <TableCell align="center" sx={{ ...thSx, width: 40 }}>
+                                    {translate('resources.orders.invoice.fixed_notified', { _: 'FN' })}
+                                </TableCell>
+                            )}
+                            <TableCell
+                                sx={{
+                                    ...thSx,
+                                    width: 36,
+                                    px: '4px',
+                                    ...stickyRightActionHeaderCellSx,
+                                }}
+                            />
                         </TableRow>
                     </TableHead>
 

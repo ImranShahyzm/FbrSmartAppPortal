@@ -65,7 +65,7 @@ function SecurityGroupListActions() {
     ];
 
     return (
-        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: { xs: '4px', md: '12px' } }}>
+        <TopToolbar sx={{ width: '100%', p: 0, minHeight: 'unset', flexDirection: 'column', pt: 0 }}>
             <Box
                 sx={{
                     width: '100%',

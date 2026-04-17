@@ -32,6 +32,7 @@ const backendResources = new Set([
     'fbrScenarios',
     'fbrSalesTaxRates',
     'glChartAccounts',
+    'glAccountGroups',
     'glVoucherTypes',
     'glJournalVouchers',
     'genBankInformation',
@@ -169,6 +170,26 @@ export default (type: string) => {
                         const data = rows.filter(
                             r => r != null && idNums.has(Number(r.id))
                         );
+                        return { data };
+                    });
+                }
+
+                if (resource === 'fbrPdiUoms' && method === 'getMany') {
+                    const ids = (params.ids as (string | number)[]).filter(
+                        id => id !== '' && id != null
+                    );
+                    if (ids.length === 0) {
+                        return Promise.resolve({ data: [] });
+                    }
+                    const idNums = new Set(ids.map(id => Number(id)));
+                    return pdiGetList(
+                        `fbrPdi/uoms?q=${encodeURIComponent('')}&take=500`
+                    ).then(res => {
+                        const rows = res.data as Array<{ id?: number; uomId?: number }>;
+                        const data = rows.filter(r => {
+                            const rid = Number(r?.id ?? r?.uomId);
+                            return rid && idNums.has(rid);
+                        });
                         return { data };
                     });
                 }

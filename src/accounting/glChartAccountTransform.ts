@@ -17,11 +17,18 @@ export function transformGlChartAccountPayload(data: Record<string, unknown>): R
         }
     }
 
+    const tagIdsRaw = data.tagIds;
+    const tagIds = Array.isArray(tagIdsRaw)
+        ? tagIdsRaw.map(x => Number(x)).filter(n => Number.isFinite(n) && n > 0)
+        : [];
+
     return {
         glCode: data.glCode != null ? String(data.glCode).trim() : '',
         glTitle: data.glTitle != null ? String(data.glTitle).trim() : '',
         glType: Number.isFinite(glType) ? glType : undefined,
         allowReconciliation: Boolean(data.allowReconciliation),
+        deprecated: Boolean(data.deprecated),
+        tagIds,
         companyIds,
         mappingCodes,
     };

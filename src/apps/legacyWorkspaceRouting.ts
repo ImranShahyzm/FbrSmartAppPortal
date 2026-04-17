@@ -6,6 +6,7 @@ import { SETTINGS_APP_ID, workspaceRootPath } from './appsRegistry';
  */
 export const LEGACY_ACCOUNTING_ONLY_FIRST_SEGMENTS = new Set([
     'glChartAccounts',
+    'glAccountGroups',
     'glJournalVouchers',
     'bankPayments',
     'cashPayments',

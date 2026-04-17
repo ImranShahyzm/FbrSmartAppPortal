@@ -41,7 +41,12 @@ export function FbrInvoicePdiRateSelect() {
         }
         let dateStr: string | undefined;
         if (invoiceDate instanceof Date && !Number.isNaN(invoiceDate.getTime())) {
-            dateStr = invoiceDate.toISOString().slice(0, 10);
+            const y = invoiceDate.getFullYear();
+            const m = String(invoiceDate.getMonth() + 1).padStart(2, '0');
+            const d = String(invoiceDate.getDate()).padStart(2, '0');
+            dateStr = `${y}-${m}-${d}`;
+        } else if (typeof invoiceDate === 'string' && invoiceDate.length >= 10) {
+            dateStr = invoiceDate.slice(0, 10);
         }
         if (didMountRates.current) {
             setValue('fbrPdiRateId', null);

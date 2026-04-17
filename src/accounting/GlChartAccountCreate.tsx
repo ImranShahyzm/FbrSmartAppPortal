@@ -41,6 +41,8 @@ export default function GlChartAccountCreate() {
                     allowReconciliation: false,
                     companyIds: [],
                     mappingCodes: {},
+                    deprecated: false,
+                    tagIds: [],
                 }}
             >
                 <GlChartAccountFormInner mode="create" />

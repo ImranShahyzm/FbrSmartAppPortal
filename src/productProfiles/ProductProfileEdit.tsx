@@ -1,4 +1,4 @@
-/** Product Registration edit — FBR field labels live in `ProductProfileFormFields.tsx`. */
+/** Products edit — FBR field labels live in `ProductProfileFormFields.tsx`. */
 import { Edit, SimpleForm } from 'react-admin';
 import { Box, Divider, Typography } from '@mui/material';
 import {
@@ -12,7 +12,7 @@ import { ProductProfileFormLayout } from './ProductProfileFormLayout';
 export default function ProductProfileEdit() {
     return (
         <Edit
-            title="Product Registration"
+            title="Products"
             actions={false}
             mutationMode="pessimistic"
             sx={{
@@ -50,7 +50,7 @@ export default function ProductProfileEdit() {
                 >
                     <Box sx={{ minWidth: 0 }}>
                         <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ fontSize: '0.85rem' }}>
-                            Product Registration
+                            Products
                         </Typography>
                         <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.72rem' }}>
                             All changes are saved on the server.
