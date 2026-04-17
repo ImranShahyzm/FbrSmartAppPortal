@@ -14,3 +14,6 @@ export const FORM_SAVE_GL_JOURNAL_VOUCHER = 'glJournalVoucherFormSave';
 export const FORM_SAVE_GEN_BANK_INFORMATION = 'genBankInformationFormSave';
 export const FORM_SAVE_GEN_CASH_INFORMATION = 'genCashInformationFormSave';
 export const FORM_SAVE_GL_ACCOUNT_GROUP = 'glAccountGroupFormSave';
+export const FORM_SAVE_COLOR_INFORMATION = 'colorInformationFormSave';
+export const FORM_SAVE_SALES_SERVICE_INFO = 'salesServiceInfoFormSave';
+export const FORM_SAVE_VEHICLE_GROUP = 'vehicleGroupInfoFormSave';

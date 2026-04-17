@@ -65,6 +65,13 @@ public sealed class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Table may exist without IDENTITY on PK (legacy / manual DDL); inserts must supply SaleServiceInfoID explicitly.
+        modelBuilder.Entity<SaleServiceInfo>(entity =>
+        {
+            entity.ToTable("adgen_SaleServiceInfo");
+            entity.Property(e => e.SaleServiceInfoID).ValueGeneratedNever();
+        });
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasIndex(x => x.Username).IsUnique();

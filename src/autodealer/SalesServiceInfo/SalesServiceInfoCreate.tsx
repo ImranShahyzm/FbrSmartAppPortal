@@ -1,9 +1,14 @@
-import * as React from 'react';
 import { Create, SimpleForm } from 'react-admin';
-import { Box, Divider, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip } from '@mui/material';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+
 import { SalesServiceInformationFormFields } from './SalesServiceInfoFormFields';
-import { SalesServiceInformationFormToolbar } from './SalesServiceInfoFormToolbar';
-import { FormSaveBridge, FORM_SAVE_CUSTOMER } from '../../common/formToolbar';
+import {
+    FormDocumentWorkflowBar,
+    FormSaveBridge,
+    FORM_SAVE_SALES_SERVICE_INFO,
+} from '../../common/formToolbar';
 import { OdooSplitFormLayout } from '../../common/layout/OdooSplitFormLayout';
 
 export default function SalesServiceInformationCreate() {
@@ -11,6 +16,7 @@ export default function SalesServiceInformationCreate() {
         <Create
             title="Sales Service Info"
             actions={false}
+            redirect="edit"
             sx={{
                 width: '100%',
                 maxWidth: '100%',
@@ -22,46 +28,40 @@ export default function SalesServiceInformationCreate() {
                 },
             }}
         >
-            <SimpleForm sx={{ maxWidth: 'none', width: '100%' }} toolbar={false}>
-                <FormSaveBridge eventName={FORM_SAVE_CUSTOMER} />
+            <SimpleForm mode="onSubmit" sx={{ maxWidth: 'none', width: '100%' }} toolbar={false}>
+                <FormSaveBridge eventName={FORM_SAVE_SALES_SERVICE_INFO} />
 
-                {/* Sticky Header - Exact same as Customer */}
-                <Box
-                    sx={{
-                        position: { md: 'sticky' },
-                        top: { md: 0 },
-                        zIndex: 5,
-                        bgcolor: 'background.paper',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        px: 2,
-                        py: '6px',
-                        mb: 1.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 2,
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ fontSize: '0.85rem' }}>
-                            Sales Service Info
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.72rem' }}>
-                            All changes are saved on the server.
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-                        <SalesServiceInformationFormToolbar />
-                    </Box>
-                </Box>
+                <FormDocumentWorkflowBar
+                    title="Sales Service Info"
+                    subtitle="All changes are saved on the server."
+                    sx={{ mb: 1, py: '4px' }}
+                    navigationActions={
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                            <Tooltip title="Previous">
+                                <span>
+                                    <IconButton size="small" disabled sx={{ color: 'text.primary' }}>
+                                        <NavigateBeforeIcon sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                            <Tooltip title="Next">
+                                <span>
+                                    <IconButton size="small" disabled sx={{ color: 'text.primary' }}>
+                                        <NavigateNextIcon sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        </Box>
+                    }
+                    saveEventName={FORM_SAVE_SALES_SERVICE_INFO}
+                    resource="salesServiceInfo"
+                    listPath="/salesServiceInfo"
+                    showDelete={false}
+                    showSave
+                />
 
-                {/* Split Layout - Exact same as Customer */}
                 <OdooSplitFormLayout>
-                    <SalesServiceInformationFormFields />
+                    <SalesServiceInformationFormFields variant="create" />
                 </OdooSplitFormLayout>
             </SimpleForm>
         </Create>

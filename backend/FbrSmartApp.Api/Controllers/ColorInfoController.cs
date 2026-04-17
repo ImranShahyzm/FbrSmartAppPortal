@@ -17,9 +17,15 @@ namespace FbrSmartApp.Api.Controllers
         }
 
      [HttpGet]
-public async Task<IActionResult> GetAll([FromQuery] string? range)
+public async Task<IActionResult> GetAll([FromQuery] string? range, [FromQuery] string? q, [FromQuery] string? sort, [FromQuery] string? order)
 {
     var query = _context.ColorInfos.AsQueryable();
+    if (!string.IsNullOrWhiteSpace(q))
+    {
+        var term = q.Trim();
+        query = query.Where(x => x.ColorTitle != null && x.ColorTitle.Contains(term));
+    }
+
     var total = await query.CountAsync();
 
     int skip = 0, take = 25;
@@ -35,17 +41,38 @@ public async Task<IActionResult> GetAll([FromQuery] string? range)
         }
     }
 
+    query = ApplyColorSort(query, sort, order);
+
     var data = await query
-        .OrderByDescending(x => x.ColorID)
         .Skip(skip)
         .Take(take)
         .ToListAsync();
 
-    Response.Headers.Append("Content-Range", $"colorInformation {skip}-{skip + data.Count - 1}/{total}");
+    var end = skip + Math.Max(data.Count - 1, 0);
+    Response.Headers.Append("Content-Range", $"colorInformation {skip}-{end}/{total}");
     Response.Headers.Append("Access-Control-Expose-Headers", "Content-Range");
 
     return Ok(data);
 }
+
+        private static IQueryable<ColorInfo> ApplyColorSort(IQueryable<ColorInfo> query, string? sort, string? order)
+        {
+            var desc = string.Equals(order, "desc", StringComparison.OrdinalIgnoreCase);
+            var field = (sort ?? string.Empty).Trim().ToLowerInvariant();
+            return field switch
+            {
+                "colorid" => desc
+                    ? query.OrderByDescending(x => x.ColorID)
+                    : query.OrderBy(x => x.ColorID),
+                "colortitle" => desc
+                    ? query.OrderByDescending(x => x.ColorTitle)
+                    : query.OrderBy(x => x.ColorTitle),
+                "entryuserdatetime" => desc
+                    ? query.OrderByDescending(x => x.EntryUserDateTime)
+                    : query.OrderBy(x => x.EntryUserDateTime),
+                _ => query.OrderBy(x => x.ColorTitle).ThenBy(x => x.ColorID),
+            };
+        }
         // ✅ GET BY ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)

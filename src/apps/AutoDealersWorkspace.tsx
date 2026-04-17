@@ -75,7 +75,6 @@ export function AutoDealersWorkspace(props: WorkspaceComponentProps) {
     create={VehicleGroupInformationCreate}       
     edit={VehicleGroupInformationEdit}    
 />
-                <Resource name="vehicleGroupInfo" list={P('Vehicle Group Info')} />
                 <Resource name="variantInformation" list={P('Variant Info')} />
                 <Resource name="bankInformation" list={P('Bank Info')} />
                 <Resource name="autoDealerReports" list={P('Reports')} />
